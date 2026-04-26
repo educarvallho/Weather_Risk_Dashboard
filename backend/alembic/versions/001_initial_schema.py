@@ -15,17 +15,17 @@ down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
+user_role_enum = sa.Enum("admin", "operator", "viewer", name="user_role_enum")
+
 
 def upgrade() -> None:
-    op.execute("CREATE TYPE user_role_enum AS ENUM ('admin', 'operator', 'viewer')")
-
     op.create_table(
         "users",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("email", sa.String(255), unique=True, nullable=False),
         sa.Column("hashed_password", sa.String(255), nullable=False),
         sa.Column("full_name", sa.String(255), nullable=False),
-        sa.Column("role", sa.Enum("admin", "operator", "viewer", name="user_role_enum", create_type=False), nullable=False),
+        sa.Column("role", user_role_enum, nullable=False),
         sa.Column("is_active", sa.Boolean, nullable=False, server_default="true"),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
@@ -63,5 +63,6 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_table("weather_cache")
     op.drop_table("cities")
+    op.drop_index("ix_users_email", table_name="users")
     op.drop_table("users")
-    op.execute("DROP TYPE IF EXISTS user_role_enum")
+    user_role_enum.drop(op.get_bind())
