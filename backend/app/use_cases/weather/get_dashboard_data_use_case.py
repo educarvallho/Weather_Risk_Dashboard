@@ -48,7 +48,7 @@ class GetDashboardDataUseCase:
 
         risk_ranking = sorted(
             city_weather_list,
-            key=lambda x: (x["current"].risk.score, x["current"].temperature, x["current"].rain_probability),
+            key=lambda x: (x["current"].temperature, x["current"].rain_probability),
             reverse=True,
         )
         high_risk = [cw for cw in city_weather_list if cw["current"].risk.level == RiskLevel.HIGH]

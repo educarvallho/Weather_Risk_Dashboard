@@ -90,9 +90,6 @@ export default function LoginPage() {
             {submitting ? <><Spinner size="sm" /> Entrando...</> : "Entrar"}
           </button>
 
-          <p className="text-center text-xs text-gray-400">
-            admin@weather.com · operator@weather.com · viewer@weather.com
-          </p>
         </form>
       </div>
     </div>

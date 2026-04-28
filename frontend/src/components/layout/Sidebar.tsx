@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, MapPin, Settings, LogOut, CloudRain, SlidersHorizontal } from "lucide-react";
+import { LayoutDashboard, MapPin, Settings, LogOut, CloudRain, SlidersHorizontal, GitCompareArrows } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 
@@ -20,6 +20,7 @@ export function Sidebar() {
   const links = [
     { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/cities", icon: MapPin, label: "Cidades" },
+    { href: "/compare", icon: GitCompareArrows, label: "Comparar" },
     ...(user?.role === "admin"
       ? [
           { href: "/admin/users", icon: Settings, label: "Usuários" },
