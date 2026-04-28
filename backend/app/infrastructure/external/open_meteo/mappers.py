@@ -1,18 +1,18 @@
 from datetime import date
-from app.domain.entities.weather import CurrentWeather, DailyForecast, RiskResult
-from app.domain.enums import RiskLevel
+from app.domain.entities.weather import CurrentWeather, DailyForecast
+from app.domain.entities.risk_rules import RiskRules
 from app.use_cases.weather.calculate_risk_use_case import CalculateRiskUseCase
 
 _risk_use_case = CalculateRiskUseCase()
 
 
-def map_current(current_json: dict) -> CurrentWeather:
+def map_current(current_json: dict, rules: RiskRules | None = None) -> CurrentWeather:
     temperature = current_json.get("temperature_2m", 0.0)
     rain_prob = current_json.get("precipitation_probability", 0)
     wind_speed = current_json.get("wind_speed_10m", 0.0)
     rain_volume = current_json.get("precipitation", 0.0)
 
-    risk = _risk_use_case.execute(temperature, rain_prob, wind_speed, rain_volume)
+    risk = _risk_use_case.execute(temperature, rain_prob, wind_speed, rain_volume, rules=rules)
 
     return CurrentWeather(
         temperature=temperature,
@@ -26,7 +26,7 @@ def map_current(current_json: dict) -> CurrentWeather:
     )
 
 
-def map_daily(daily_json: dict) -> list[DailyForecast]:
+def map_daily(daily_json: dict, rules: RiskRules | None = None) -> list[DailyForecast]:
     dates = daily_json.get("time", [])
     max_temps = daily_json.get("temperature_2m_max", [])
     min_temps = daily_json.get("temperature_2m_min", [])
@@ -44,7 +44,7 @@ def map_daily(daily_json: dict) -> list[DailyForecast]:
         wind = wind_speeds[i] if i < len(wind_speeds) else 0.0
         code = weather_codes[i] if i < len(weather_codes) else 0
         avg_temp = (max_t + min_t) / 2
-        risk = _risk_use_case.execute(avg_temp, rain_p or 0, wind or 0, rain_v or 0)
+        risk = _risk_use_case.execute(avg_temp, rain_p or 0, wind or 0, rain_v or 0, rules=rules)
         results.append(DailyForecast(
             date=date.fromisoformat(d),
             max_temp=max_t or 0.0,

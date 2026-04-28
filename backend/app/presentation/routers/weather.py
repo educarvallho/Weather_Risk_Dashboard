@@ -3,7 +3,8 @@ from app.domain.entities.user import User
 from app.domain.exceptions import NotFoundException
 from app.infrastructure.database.repositories.city_repository import CityRepository
 from app.infrastructure.external.open_meteo.client import OpenMeteoClient
-from app.presentation.dependencies import get_city_repository, get_weather_client, get_current_user
+from app.presentation.dependencies import get_city_repository, get_weather_client, get_current_user, get_rules_repository
+from app.infrastructure.database.repositories.risk_rules_repository import RiskRulesRepository
 from app.presentation.schemas.weather_schemas import CityForecastResponse, LocationWeatherResponse, CurrentWeatherOut, DailyForecastOut, RiskOut
 from app.use_cases.weather.get_dashboard_data_use_case import GetDashboardDataUseCase
 from app.use_cases.weather.get_city_forecast_use_case import GetCityForecastUseCase
@@ -46,10 +47,11 @@ def _daily_out(daily) -> DailyForecastOut:
 def get_dashboard(
     city_repo: CityRepository = Depends(get_city_repository),
     weather_client: OpenMeteoClient = Depends(get_weather_client),
+    rules_repo: RiskRulesRepository = Depends(get_rules_repository),
     _: User = Depends(get_current_user),
 ):
     try:
-        return GetDashboardDataUseCase(city_repo, weather_client).execute()
+        return GetDashboardDataUseCase(city_repo, weather_client, rules_repo).execute()
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Erro ao carregar dashboard: {str(e)}")
 

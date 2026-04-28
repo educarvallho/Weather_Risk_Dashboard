@@ -106,4 +106,20 @@ export interface Dashboard {
   alerts: Alert[];
   temperature_comparison: { city_id: number; city_name: string; temperature: number }[];
   rain_comparison: { city_id: number; city_name: string; rain_probability: number; rain_volume_mm: number }[];
+  last_updated: string;
+}
+
+export interface RiskRules {
+  rain_prob_high: number;
+  rain_prob_medium: number;
+  wind_high: number;
+  wind_medium: number;
+  temp_extreme_high: number;
+  temp_extreme_low: number;
+  temp_high: number;
+  temp_low: number;
+  rain_volume_high: number;
+  score_high_threshold: number;
+  score_medium_threshold: number;
+  updated_at?: string | null;
 }

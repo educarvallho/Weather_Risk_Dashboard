@@ -1,4 +1,7 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
+
+logger = logging.getLogger(__name__)
 from app.domain.exceptions import InvalidCredentialsException, InactiveUserException
 from app.infrastructure.database.repositories.user_repository import UserRepository
 from app.infrastructure.security.jwt_handler import JWTHandler
@@ -22,14 +25,17 @@ def login(
     try:
         result = use_case.execute(body.email, body.password)
         user = result["user"]
+        logger.info("login_success email=%s role=%s", user.email, user.role)
         return LoginResponse(
             access_token=result["access_token"],
             token_type="bearer",
             user=UserOut(id=str(user.id), email=user.email, full_name=user.full_name, role=user.role, is_active=user.is_active),
         )
     except InvalidCredentialsException:
+        logger.warning("login_failed email=%s reason=invalid_credentials", body.email)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email ou senha inválidos")
     except InactiveUserException:
+        logger.warning("login_failed email=%s reason=inactive_account", body.email)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Conta desativada")
 
 

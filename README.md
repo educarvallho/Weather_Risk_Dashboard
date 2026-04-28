@@ -6,8 +6,8 @@ Plataforma web interna para monitoramento de riscos climáticos operacionais em 
 
 ```bash
 # 1. Clone o repositório
-git clone <url-do-repositorio>
-cd weather-dashboard
+git clone https://github.com/educarvallho/Weather_Risk_Dashboard.git
+cd Weather_Risk_Dashboard
 
 # 2. Configure as variáveis de ambiente
 cp .env.example .env
@@ -16,7 +16,7 @@ cp .env.example .env
 # - OPENAI_API_KEY (chave fornecida pelos avaliadores)
 
 # 3. Suba todos os serviços
-docker-compose up --build
+docker compose up --build
 ```
 
 A aplicação estará disponível em:
@@ -102,11 +102,13 @@ O cálculo está em `backend/app/use_cases/weather/calculate_risk_use_case.py` �
 | Probabilidade de chuva > 40% | +1 |
 | Velocidade do vento > 50 km/h | +2 |
 | Velocidade do vento > 30 km/h | +1 |
-| Temperatura > 38°C ou < 5°C | +2 |
-| Temperatura > 35°C ou < 10°C | +1 |
+| Temperatura > 33°C ou < 5°C | +2 |
+| Temperatura > 28°C ou < 10°C | +1 |
 | Volume de chuva > 20 mm | +1 |
 
 **Classificação**: Score 0–2 = **Baixo** · Score 3–4 = **Médio** · Score 5+ = **Alto**
+
+Os limiares acima são os valores padrão do sistema. Administradores podem calibrá-los em tempo real pelo menu **Regras** no dashboard.
 
 A mesma lógica é usada em: dashboard, ranking, previsão detalhada, alertas e respostas do agente.
 

@@ -1,23 +1,28 @@
+from datetime import datetime, timezone
 from app.domain.enums import RiskLevel
 from app.infrastructure.database.repositories.interfaces.i_city_repository import ICityRepository
+from app.infrastructure.database.repositories.risk_rules_repository import RiskRulesRepository
 from app.infrastructure.external.open_meteo.client import OpenMeteoClient
 from app.infrastructure.external.open_meteo.mappers import map_current
 
 
 class GetDashboardDataUseCase:
-    def __init__(self, city_repo: ICityRepository, weather_client: OpenMeteoClient):
+    def __init__(self, city_repo: ICityRepository, weather_client: OpenMeteoClient, rules_repo: RiskRulesRepository | None = None):
         self._city_repo = city_repo
         self._weather = weather_client
+        self._rules_repo = rules_repo
 
     def execute(self) -> dict:
         all_cities = self._city_repo.list_all(active_only=False)
         active_cities = [c for c in all_cities if c.is_active]
 
+        rules = self._rules_repo.get_rules() if self._rules_repo else None
+
         city_weather_list = []
         for city in active_cities:
             try:
                 data = self._weather.fetch(city.latitude, city.longitude, city_id=city.id)
-                current = map_current(data["current"])
+                current = map_current(data["current"], rules=rules)
                 city_weather_list.append({
                     "city_id": city.id,
                     "city_name": city.name,
@@ -43,13 +48,13 @@ class GetDashboardDataUseCase:
 
         risk_ranking = sorted(
             city_weather_list,
-            key=lambda x: (x["current"].risk.score, x["current"].temperature),
+            key=lambda x: (x["current"].risk.score, x["current"].temperature, x["current"].rain_probability),
             reverse=True,
         )
         high_risk = [cw for cw in city_weather_list if cw["current"].risk.level == RiskLevel.HIGH]
 
-        # Best city = lowest risk score
-        best_city = min(city_weather_list, key=lambda x: x["current"].risk.score)
+        # Best city = lowest risk score, tiebreak by lowest temperature
+        best_city = min(city_weather_list, key=lambda x: (x["current"].risk.score, x["current"].temperature))
 
         alerts = [
             {
@@ -65,6 +70,7 @@ class GetDashboardDataUseCase:
         alerts.sort(key=lambda a: a["risk_score"], reverse=True)
 
         return {
+            "last_updated": datetime.now(timezone.utc).isoformat(),
             "kpis": {
                 "total_cities": len(all_cities),
                 "active_cities": len(active_cities),
@@ -107,6 +113,7 @@ class GetDashboardDataUseCase:
 
     def _empty_dashboard(self, total: int, active: int) -> dict:
         return {
+            "last_updated": datetime.now(timezone.utc).isoformat(),
             "kpis": {"total_cities": total, "active_cities": active, "avg_temperature": 0, "max_temperature": 0, "min_temperature": 0, "avg_rain_probability": 0, "high_risk_count": 0, "hottest_city": None, "coldest_city": None, "most_rain_prob_city": None, "most_rain_volume_city": None, "windiest_city": None, "best_operation_city": None},
             "risk_ranking": [],
             "alerts": [],

@@ -1,4 +1,7 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
+
+logger = logging.getLogger(__name__)
 from app.domain.entities.user import User
 from app.domain.exceptions import ForbiddenException, NotFoundException
 from app.infrastructure.database.repositories.city_repository import CityRepository
@@ -50,7 +53,9 @@ def create_city(
     current_user: User = Depends(require_admin_or_operator),
 ):
     try:
-        return _to_out(CreateCityUseCase(city_repo).execute(current_user, body.name, body.state, body.country, body.latitude, body.longitude))
+        city = CreateCityUseCase(city_repo).execute(current_user, body.name, body.state, body.country, body.latitude, body.longitude)
+        logger.info("city_created id=%s name=%s user=%s", city.id, city.name, current_user.email)
+        return _to_out(city)
     except ForbiddenException as e:
         raise HTTPException(status_code=403, detail=str(e))
 
@@ -63,7 +68,9 @@ def update_city(
     current_user: User = Depends(require_admin_or_operator),
 ):
     try:
-        return _to_out(UpdateCityUseCase(city_repo).execute(current_user, city_id, body.name, body.state, body.country, body.latitude, body.longitude))
+        city = UpdateCityUseCase(city_repo).execute(current_user, city_id, body.name, body.state, body.country, body.latitude, body.longitude)
+        logger.info("city_updated id=%s name=%s user=%s", city.id, city.name, current_user.email)
+        return _to_out(city)
     except (ForbiddenException, NotFoundException) as e:
         code = 403 if isinstance(e, ForbiddenException) else 404
         raise HTTPException(status_code=code, detail=str(e))
@@ -76,7 +83,9 @@ def toggle_city(
     current_user: User = Depends(require_admin_or_operator),
 ):
     try:
-        return _to_out(ToggleCityActiveUseCase(city_repo).execute(current_user, city_id))
+        city = ToggleCityActiveUseCase(city_repo).execute(current_user, city_id)
+        logger.info("city_toggled id=%s active=%s user=%s", city.id, city.is_active, current_user.email)
+        return _to_out(city)
     except (ForbiddenException, NotFoundException) as e:
         code = 403 if isinstance(e, ForbiddenException) else 404
         raise HTTPException(status_code=code, detail=str(e))
@@ -90,6 +99,7 @@ def delete_city(
 ):
     try:
         DeleteCityUseCase(city_repo).execute(current_user, city_id)
+        logger.info("city_deleted id=%s user=%s", city_id, current_user.email)
     except (ForbiddenException, NotFoundException) as e:
         code = 403 if isinstance(e, ForbiddenException) else 404
         raise HTTPException(status_code=code, detail=str(e))

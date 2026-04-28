@@ -10,6 +10,7 @@ from app.domain.exceptions import (
 from app.infrastructure.database.connection import get_db
 from app.infrastructure.database.repositories.user_repository import UserRepository
 from app.infrastructure.database.repositories.city_repository import CityRepository
+from app.infrastructure.database.repositories.risk_rules_repository import RiskRulesRepository
 from app.infrastructure.external.open_meteo.client import OpenMeteoClient
 from app.infrastructure.external.openai.client import OpenAIClient
 from app.infrastructure.security.jwt_handler import JWTHandler
@@ -28,6 +29,10 @@ def get_user_repository(db: Session = Depends(get_db)) -> UserRepository:
 
 def get_city_repository(db: Session = Depends(get_db)) -> CityRepository:
     return CityRepository(db)
+
+
+def get_rules_repository(db: Session = Depends(get_db)) -> RiskRulesRepository:
+    return RiskRulesRepository(db)
 
 
 def get_weather_client(db: Session = Depends(get_db)) -> OpenMeteoClient:

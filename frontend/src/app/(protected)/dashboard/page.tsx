@@ -61,13 +61,20 @@ export default function DashboardPage() {
   if (error) return <div className="pt-8"><ErrorMessage message={error} /></div>;
   if (!dashboard) return null;
 
-  const { kpis, risk_ranking, alerts, temperature_comparison, rain_comparison } = dashboard;
+  const { kpis, risk_ranking, alerts, temperature_comparison, rain_comparison, last_updated } = dashboard;
+
+  const formattedUpdate = last_updated
+    ? new Date(last_updated).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    : null;
 
   return (
     <div className="space-y-6 max-w-7xl">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard Climático</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Visão geral das {kpis.active_cities} cidades monitoradas</p>
+        <p className="text-sm text-gray-500 mt-0.5">
+          Visão geral das {kpis.active_cities} cidades monitoradas
+          {formattedUpdate && <span className="ml-2 text-gray-400">· Atualizado: {formattedUpdate}</span>}
+        </p>
       </div>
 
       {/* KPIs */}

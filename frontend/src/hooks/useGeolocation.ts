@@ -32,11 +32,11 @@ export function useGeolocation(): GeolocationState {
           err.code === 1
             ? "Permissão de localização negada"
             : err.code === 2
-            ? "Localização indisponível"
-            : "Tempo limite ao obter localização";
+            ? "Localização indisponível no momento"
+            : "Não foi possível obter sua localização";
         setState({ status: "error", message: msg });
       },
-      { timeout: 10000, maximumAge: 60000 }
+      { timeout: 20000, maximumAge: 300000, enableHighAccuracy: false }
     );
   }, []);
 

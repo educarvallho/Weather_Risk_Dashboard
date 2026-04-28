@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from app.infrastructure.database.connection import SessionLocal
 from app.infrastructure.database.models.user_model import UserModel
 from app.infrastructure.database.models.city_model import CityModel
+from app.infrastructure.database.models.risk_rules_model import RiskRulesModel
 from app.infrastructure.security.password_hasher import PasswordHasher
 
 SEED_USERS = [
@@ -64,6 +65,24 @@ def seed():
             print(f"  Created {len(SEED_CITIES)} cities")
         else:
             print(f"  Cities already seeded ({existing_cities} found), skipping")
+
+        # Risk rules (singleton row id=1)
+        existing_rules = db.query(RiskRulesModel).filter(RiskRulesModel.id == 1).first()
+        if existing_rules is None:
+            print("Seeding risk rules...")
+            db.add(RiskRulesModel(
+                id=1,
+                rain_prob_high=70.0, rain_prob_medium=40.0,
+                wind_high=50.0, wind_medium=30.0,
+                temp_extreme_high=33.0, temp_extreme_low=5.0,
+                temp_high=28.0, temp_low=10.0,
+                rain_volume_high=20.0,
+                score_high_threshold=5, score_medium_threshold=3,
+            ))
+            db.commit()
+            print("  Created default risk rules")
+        else:
+            print("  Risk rules already seeded, skipping")
 
         print("Seed complete.")
     except Exception as e:

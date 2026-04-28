@@ -1,62 +1,51 @@
 from app.domain.entities.weather import RiskResult
+from app.domain.entities.risk_rules import RiskRules
 from app.domain.enums import RiskLevel
 
 
 class CalculateRiskUseCase:
-    """
-    Pure function — no I/O. Calculates operational risk based on weather parameters.
-
-    Scoring rules:
-      Rain probability > 70%  → +2  | > 40%  → +1
-      Wind speed > 50 km/h   → +2  | > 30   → +1
-      Temperature > 38°C or < 5°C → +2  | > 35 or < 10°C → +1
-      Rain volume > 20 mm    → +1
-
-    Classification: 0–2 = LOW | 3–4 = MEDIUM | 5+ = HIGH
-    """
-
     def execute(
         self,
         temperature: float,
         rain_prob: float,
         wind_speed_kmh: float,
         rain_volume_mm: float,
+        rules: RiskRules | None = None,
     ) -> RiskResult:
+        if rules is None:
+            rules = RiskRules()
+
         score = 0
         reasons: list[str] = []
 
-        # Rain probability
-        if rain_prob > 70:
+        if rain_prob > rules.rain_prob_high:
             score += 2
             reasons.append(f"Prob. chuva alta ({rain_prob:.0f}%)")
-        elif rain_prob > 40:
+        elif rain_prob > rules.rain_prob_medium:
             score += 1
             reasons.append(f"Prob. chuva moderada ({rain_prob:.0f}%)")
 
-        # Wind speed
-        if wind_speed_kmh > 50:
+        if wind_speed_kmh > rules.wind_high:
             score += 2
             reasons.append(f"Vento perigoso ({wind_speed_kmh:.0f} km/h)")
-        elif wind_speed_kmh > 30:
+        elif wind_speed_kmh > rules.wind_medium:
             score += 1
             reasons.append(f"Vento forte ({wind_speed_kmh:.0f} km/h)")
 
-        # Temperature extremes
-        if temperature > 38 or temperature < 5:
+        if temperature > rules.temp_extreme_high or temperature < rules.temp_extreme_low:
             score += 2
             reasons.append(f"Temperatura extrema ({temperature:.1f}°C)")
-        elif temperature > 35 or temperature < 10:
+        elif temperature > rules.temp_high or temperature < rules.temp_low:
             score += 1
             reasons.append(f"Temperatura elevada/baixa ({temperature:.1f}°C)")
 
-        # Rain volume
-        if rain_volume_mm > 20:
+        if rain_volume_mm > rules.rain_volume_high:
             score += 1
             reasons.append(f"Volume de chuva alto ({rain_volume_mm:.1f} mm)")
 
-        if score >= 5:
+        if score >= rules.score_high_threshold:
             level = RiskLevel.HIGH
-        elif score >= 3:
+        elif score >= rules.score_medium_threshold:
             level = RiskLevel.MEDIUM
         else:
             level = RiskLevel.LOW
