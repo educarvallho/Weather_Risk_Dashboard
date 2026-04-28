@@ -90,10 +90,14 @@ export function useGeolocation(): GeolocationState {
       }
     };
 
-    // Hard timeout: fires after 10s regardless of what getCurrentPosition does.
-    // getCurrentPosition's own `timeout` option is unreliable — it does NOT apply to the
-    // permission-prompt wait time, so the callback can hang indefinitely on blocked/ignored prompts.
-    const hardTimer = setTimeout(runIpFallback, 10000);
+    // Watchdog: fires after 15s if no path has resolved yet (city not determined).
+    // The native getCurrentPosition has its own 10s timeout option, but it does NOT cover
+    // the permission-prompt wait time, so the callback can hang indefinitely on blocked/ignored
+    // prompts (HTTP origins on mobile, OS without GPS, dialog dismissed, etc.).
+    // Giving 15s here lets the native 10s error callback fire first when it can; the watchdog
+    // is the last-resort safety net that forces the IP fallback chain (ipapi.co → freeipapi.com)
+    // and feeds lat/lon to the backend so the "Sua Localização" card gets populated.
+    const hardTimer = setTimeout(runIpFallback, 15000);
 
     if (!navigator.geolocation) {
       clearTimeout(hardTimer);
