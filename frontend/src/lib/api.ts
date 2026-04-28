@@ -13,7 +13,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     ...((options.headers as Record<string, string>) || {}),
   };
 
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  } catch {
+    // Network error (ECONNRESET, socket hang up) — retry once after short delay
+    await new Promise((r) => setTimeout(r, 800));
+    res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  }
 
   if (res.status === 401) {
     if (typeof window !== "undefined") {

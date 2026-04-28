@@ -4,7 +4,7 @@ import { RiskBadge } from "@/components/ui/RiskBadge";
 
 type Props =
   | { status: "loading" }
-  | { status: "error"; message: string }
+  | { status: "error"; message: string; city?: string; state?: string }
   | { status: "success"; data: LocationWeather; approximate?: boolean; city?: string; state?: string };
 
 export function LocationWeatherCard(props: Props) {
@@ -24,15 +24,21 @@ export function LocationWeatherCard(props: Props) {
   }
 
   if (props.status === "error") {
+    const errorLabel = props.city
+      ? (props.state ? `${props.city}, ${props.state}` : props.city)
+      : "Sua Localização";
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
           <MapPin className="h-4 w-4 text-teal-600" />
-          <h3 className="font-semibold text-gray-900">Sua Localização</h3>
+          <h3 className="font-semibold text-gray-900">{errorLabel}</h3>
         </div>
+        {props.city && (
+          <p className="text-xs text-amber-600 mb-2">Localização aproximada via IP</p>
+        )}
         <div className="flex items-center gap-2 text-gray-400 text-sm">
           <AlertCircle className="h-4 w-4" />
-          {props.message}
+          Dados climáticos temporariamente indisponíveis
         </div>
       </div>
     );

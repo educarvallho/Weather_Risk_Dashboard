@@ -70,7 +70,14 @@ class GetDashboardDataUseCase:
         ]
         alerts.sort(key=lambda a: a["risk_score"], reverse=True)
 
-        fetched_ats = [cw["fetched_at"] for cw in city_weather_list if cw.get("fetched_at")]
+        fetched_ats = []
+        for cw in city_weather_list:
+            ft = cw.get("fetched_at")
+            if ft is None:
+                continue
+            if getattr(ft, "tzinfo", None) is None:
+                ft = ft.replace(tzinfo=timezone.utc)
+            fetched_ats.append(ft)
         last_updated = max(fetched_ats).isoformat() if fetched_ats else datetime.now(timezone.utc).isoformat()
 
         return {

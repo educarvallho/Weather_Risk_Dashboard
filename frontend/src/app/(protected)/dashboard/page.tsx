@@ -26,7 +26,7 @@ function readCache(): { data: Dashboard; fetchedAt: number } | null {
 
 type LocationState =
   | { status: "loading" }
-  | { status: "error"; message: string }
+  | { status: "error"; message: string; city?: string; state?: string }
   | { status: "success"; data: LocationWeather; approximate?: boolean; city?: string; state?: string };
 
 export default function DashboardPage() {
@@ -71,10 +71,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (geo.status === "success") {
+      // Destructure before async call so closure captures correct values
+      const { latitude, longitude, approximate, city, state } = geo;
       setLocationState({ status: "loading" });
-      api.get<LocationWeather>(`/weather/location?lat=${geo.latitude}&lon=${geo.longitude}`)
-        .then((data) => setLocationState({ status: "success", data, approximate: geo.approximate, city: geo.city, state: geo.state }))
-        .catch((e) => setLocationState({ status: "error", message: e.message }));
+      api.get<LocationWeather>(`/weather/location?lat=${latitude}&lon=${longitude}`)
+        .then((data) => setLocationState({ status: "success", data, approximate, city, state }))
+        .catch((e) => setLocationState({ status: "error", message: e.message, city, state }));
     } else if (geo.status === "error") {
       setLocationState({ status: "error", message: geo.message });
     }
