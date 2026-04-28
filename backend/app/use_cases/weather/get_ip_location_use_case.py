@@ -1,8 +1,11 @@
 import ipaddress
+import logging
 from dataclasses import dataclass
 from typing import Optional
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -11,6 +14,7 @@ class IpLocationResult:
     longitude: float
     city: str
     state: str
+    source: str
 
 
 def _is_public_ip(ip: Optional[str]) -> bool:
@@ -23,63 +27,109 @@ def _is_public_ip(ip: Optional[str]) -> bool:
         return False
 
 
-def _ipapi_co(ip: Optional[str]) -> Optional[IpLocationResult]:
+def _ipapi_co(ip: Optional[str]) -> tuple[Optional[IpLocationResult], str]:
     url = f"https://ipapi.co/{ip}/json/" if ip else "https://ipapi.co/json/"
     try:
-        with httpx.Client(timeout=6.0) as client:
+        with httpx.Client(timeout=8.0, follow_redirects=True) as client:
             r = client.get(url, headers={"User-Agent": "weather-risk-dashboard/1.0"})
             if r.status_code != 200:
-                return None
+                return None, f"ipapi.co HTTP {r.status_code}: {r.text[:200]}"
             d = r.json()
             if d.get("error"):
-                return None
+                return None, f"ipapi.co error: {d.get('reason') or d}"
             lat = d.get("latitude")
             lon = d.get("longitude")
             if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
-                return None
+                return None, f"ipapi.co payload inválido: {d}"
             return IpLocationResult(
                 latitude=float(lat),
                 longitude=float(lon),
                 city=str(d.get("city") or ""),
                 state=str(d.get("region_code") or d.get("region") or ""),
-            )
-    except Exception:
-        return None
+                source="ipapi.co",
+            ), ""
+    except httpx.TimeoutException:
+        return None, "ipapi.co timeout (8s)"
+    except httpx.RequestError as e:
+        return None, f"ipapi.co rede: {type(e).__name__}: {e}"
+    except Exception as e:
+        return None, f"ipapi.co erro: {type(e).__name__}: {e}"
 
 
-def _freeipapi(ip: Optional[str]) -> Optional[IpLocationResult]:
+def _freeipapi(ip: Optional[str]) -> tuple[Optional[IpLocationResult], str]:
     url = f"https://freeipapi.com/api/json/{ip}" if ip else "https://freeipapi.com/api/json"
     try:
-        with httpx.Client(timeout=6.0) as client:
+        with httpx.Client(timeout=8.0, follow_redirects=True) as client:
             r = client.get(url)
             if r.status_code != 200:
-                return None
+                return None, f"freeipapi.com HTTP {r.status_code}: {r.text[:200]}"
             d = r.json()
             lat = d.get("latitude")
             lon = d.get("longitude")
             if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
-                return None
+                return None, f"freeipapi.com payload inválido: {d}"
             return IpLocationResult(
                 latitude=float(lat),
                 longitude=float(lon),
                 city=str(d.get("cityName") or ""),
                 state=str(d.get("regionName") or ""),
-            )
-    except Exception:
-        return None
+                source="freeipapi.com",
+            ), ""
+    except httpx.TimeoutException:
+        return None, "freeipapi.com timeout (8s)"
+    except httpx.RequestError as e:
+        return None, f"freeipapi.com rede: {type(e).__name__}: {e}"
+    except Exception as e:
+        return None, f"freeipapi.com erro: {type(e).__name__}: {e}"
+
+
+def _ipwhois(ip: Optional[str]) -> tuple[Optional[IpLocationResult], str]:
+    url = f"https://ipwho.is/{ip}" if ip else "https://ipwho.is/"
+    try:
+        with httpx.Client(timeout=8.0, follow_redirects=True) as client:
+            r = client.get(url)
+            if r.status_code != 200:
+                return None, f"ipwho.is HTTP {r.status_code}: {r.text[:200]}"
+            d = r.json()
+            if not d.get("success"):
+                return None, f"ipwho.is error: {d.get('message') or d}"
+            lat = d.get("latitude")
+            lon = d.get("longitude")
+            if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+                return None, f"ipwho.is payload inválido: {d}"
+            return IpLocationResult(
+                latitude=float(lat),
+                longitude=float(lon),
+                city=str(d.get("city") or ""),
+                state=str(d.get("region") or ""),
+                source="ipwho.is",
+            ), ""
+    except httpx.TimeoutException:
+        return None, "ipwho.is timeout (8s)"
+    except httpx.RequestError as e:
+        return None, f"ipwho.is rede: {type(e).__name__}: {e}"
+    except Exception as e:
+        return None, f"ipwho.is erro: {type(e).__name__}: {e}"
 
 
 class GetIpLocationUseCase:
-    """Resolves user location by IP address from server side.
+    """Resolves user location by IP from server side.
 
-    Used as a final fallback when the browser's geolocation and browser-side IP APIs
-    fail (HTTP origin, CORS blocks, mobile network filters, rate limits, etc.).
-    Server-side calls bypass all browser-imposed restrictions.
+    Bypasses browser CORS, mixed-content, and mobile-network filters by calling
+    IP geolocation APIs directly from the backend (httpx).
     """
 
     def execute(self, client_ip: Optional[str]) -> IpLocationResult:
         ip = client_ip if _is_public_ip(client_ip) else None
-        result = _ipapi_co(ip) or _freeipapi(ip)
-        if result is None:
-            raise RuntimeError("Não foi possível determinar localização via IP")
-        return result
+        logger.info("[ip-locate] client_ip=%r usando_ip=%r", client_ip, ip)
+
+        errors: list[str] = []
+        for name, fn in (("ipapi.co", _ipapi_co), ("freeipapi.com", _freeipapi), ("ipwho.is", _ipwhois)):
+            result, err = fn(ip)
+            if result is not None:
+                logger.info("[ip-locate] sucesso via %s: city=%r state=%r", name, result.city, result.state)
+                return result
+            logger.warning("[ip-locate] %s falhou: %s", name, err)
+            errors.append(err)
+
+        raise RuntimeError("Todas as APIs falharam: " + " | ".join(errors))

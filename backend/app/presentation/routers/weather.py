@@ -114,7 +114,7 @@ def get_ip_location(
             longitude=result.longitude,
             city=result.city or None,
             state=result.state or None,
-            source="server",
+            source=result.source,
         )
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Erro ao detectar localização por IP: {str(e)}")
+        raise HTTPException(status_code=503, detail=str(e))
