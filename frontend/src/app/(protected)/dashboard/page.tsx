@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Thermometer, AlertTriangle, Building, CheckCircle2, Droplets } from "lucide-react";
+import { Thermometer, AlertTriangle, CheckCircle2, Droplets } from "lucide-react";
 import { Dashboard, LocationWeather } from "@/types";
 import { api } from "@/lib/api";
 import { KPICard } from "@/components/dashboard/KPICard";
@@ -14,22 +14,45 @@ import { Spinner } from "@/components/ui/Spinner";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
 import { useGeolocation } from "@/hooks/useGeolocation";
 
+// Module-level cache persists across navigations within the same browser session.
+// Prevents unnecessary API calls and keeps last_updated stable when navigating away and back.
+const CACHE_TTL = 5 * 60 * 1000;
+let _cache: { data: Dashboard; fetchedAt: number } | null = null;
+
+function readCache(): { data: Dashboard; fetchedAt: number } | null {
+  if (_cache && Date.now() - _cache.fetchedAt < CACHE_TTL) return _cache;
+  return null;
+}
+
 type LocationState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "success"; data: LocationWeather; approximate?: boolean; city?: string; state?: string };
 
 export default function DashboardPage() {
-  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [dashboard, setDashboard] = useState<Dashboard | null>(() => readCache()?.data ?? null);
+  const [loading, setLoading] = useState(() => readCache() === null);
   const [error, setError] = useState<string | null>(null);
+  const [fetchedAt, setFetchedAt] = useState<number | null>(() => readCache()?.fetchedAt ?? null);
   const [locationState, setLocationState] = useState<LocationState>({ status: "loading" });
   const geo = useGeolocation();
 
-  const loadDashboard = useCallback(async () => {
+  const loadDashboard = useCallback(async (force = false) => {
+    if (!force) {
+      const cached = readCache();
+      if (cached) {
+        setDashboard(cached.data);
+        setFetchedAt(cached.fetchedAt);
+        setLoading(false);
+        return;
+      }
+    }
     try {
       const data = await api.get<Dashboard>("/weather/dashboard");
+      const now = Date.now();
+      _cache = { data, fetchedAt: now };
       setDashboard(data);
+      setFetchedAt(now);
       setError(null);
     } catch (e: any) {
       setError(e.message);
@@ -40,9 +63,9 @@ export default function DashboardPage() {
 
   useEffect(() => { loadDashboard(); }, [loadDashboard]);
 
-  // Auto-refresh every 5 minutes
+  // Auto-refresh every 5 minutes — forces re-fetch and updates cache
   useEffect(() => {
-    const interval = setInterval(loadDashboard, 5 * 60 * 1000);
+    const interval = setInterval(() => loadDashboard(true), CACHE_TTL);
     return () => clearInterval(interval);
   }, [loadDashboard]);
 
@@ -61,10 +84,10 @@ export default function DashboardPage() {
   if (error) return <div className="pt-8"><ErrorMessage message={error} /></div>;
   if (!dashboard) return null;
 
-  const { kpis, risk_ranking, alerts, temperature_comparison, rain_comparison, last_updated } = dashboard;
+  const { kpis, risk_ranking, alerts, temperature_comparison, rain_comparison } = dashboard;
 
-  const formattedUpdate = last_updated
-    ? new Date(last_updated).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+  const formattedUpdate = fetchedAt
+    ? new Date(fetchedAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
     : null;
 
   return (

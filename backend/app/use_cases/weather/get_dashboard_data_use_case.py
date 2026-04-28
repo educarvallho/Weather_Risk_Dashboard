@@ -28,6 +28,7 @@ class GetDashboardDataUseCase:
                     "city_name": city.name,
                     "state": city.state,
                     "current": current,
+                    "fetched_at": data.get("fetched_at"),
                 })
             except Exception:
                 pass
@@ -69,8 +70,11 @@ class GetDashboardDataUseCase:
         ]
         alerts.sort(key=lambda a: a["risk_score"], reverse=True)
 
+        fetched_ats = [cw["fetched_at"] for cw in city_weather_list if cw.get("fetched_at")]
+        last_updated = max(fetched_ats).isoformat() if fetched_ats else datetime.now(timezone.utc).isoformat()
+
         return {
-            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "last_updated": last_updated,
             "kpis": {
                 "total_cities": len(all_cities),
                 "active_cities": len(active_cities),

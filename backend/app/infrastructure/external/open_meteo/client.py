@@ -33,13 +33,12 @@ class OpenMeteoClient:
             )
         cached = query.order_by(WeatherCacheModel.fetched_at.desc()).first()
         if cached:
-            return {"current": cached.current_json, "daily": cached.forecast_json}
+            return {"current": cached.current_json, "daily": cached.forecast_json, "fetched_at": cached.fetched_at}
         return None
 
-    def _save_cache(self, city_id: Optional[int], lat: float, lon: float, current_json: dict, forecast_json: dict) -> None:
+    def _save_cache(self, city_id: Optional[int], lat: float, lon: float, current_json: dict, forecast_json: dict) -> datetime:
         now = datetime.now(timezone.utc)
         lat_r, lon_r = self._round_coords(lat, lon)
-        # Remove old cache entry
         self._db.query(WeatherCacheModel).filter(
             WeatherCacheModel.city_id == city_id,
             WeatherCacheModel.latitude == lat_r,
@@ -49,12 +48,14 @@ class OpenMeteoClient:
             city_id=city_id,
             latitude=lat_r,
             longitude=lon_r,
+            fetched_at=now,
             expires_at=now + timedelta(minutes=CURRENT_CACHE_MINUTES),
             current_json=current_json,
             forecast_json=forecast_json,
         )
         self._db.add(cache)
         self._db.commit()
+        return now
 
     def fetch(self, lat: float, lon: float, city_id: Optional[int] = None) -> dict:
         cached = self._get_cached(city_id, lat, lon)
@@ -77,5 +78,5 @@ class OpenMeteoClient:
 
         current_json = data.get("current", {})
         daily_json = data.get("daily", {})
-        self._save_cache(city_id, lat, lon, current_json, daily_json)
-        return {"current": current_json, "daily": daily_json}
+        fetched_at = self._save_cache(city_id, lat, lon, current_json, daily_json)
+        return {"current": current_json, "daily": daily_json, "fetched_at": fetched_at}

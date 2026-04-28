@@ -83,7 +83,7 @@ export function useGeolocation(): GeolocationState {
         if (loc) setState({ status: "success", ...loc, approximate: true });
         else setState({ status: "error", message: "Não foi possível obter sua localização" });
       },
-      { timeout: 20000, maximumAge: 300000, enableHighAccuracy: false }
+      { timeout: 10000, maximumAge: 300000, enableHighAccuracy: false }
     );
   }, []);
 
