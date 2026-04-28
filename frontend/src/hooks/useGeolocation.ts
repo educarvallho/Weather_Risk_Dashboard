@@ -31,7 +31,12 @@ async function tryIpApi(): Promise<IPLocation | null> {
     if (!res.ok) return null;
     const d = await res.json();
     if (d.error || typeof d.latitude !== "number" || typeof d.longitude !== "number") return null;
-    return { latitude: d.latitude, longitude: d.longitude, city: d.city || "", state: d.region_code || d.region || "" };
+    return {
+      latitude: d.latitude,
+      longitude: d.longitude,
+      city: d.city || "",
+      state: d.region_code || d.region || "",
+    };
   } catch {
     return null;
   }
@@ -43,7 +48,12 @@ async function tryFreeIpApi(): Promise<IPLocation | null> {
     if (!res.ok) return null;
     const d = await res.json();
     if (typeof d.latitude !== "number" || typeof d.longitude !== "number") return null;
-    return { latitude: d.latitude, longitude: d.longitude, city: d.cityName || "", state: d.regionName || "" };
+    return {
+      latitude: d.latitude,
+      longitude: d.longitude,
+      city: d.cityName || "",
+      state: d.regionName || "",
+    };
   } catch {
     return null;
   }
@@ -61,30 +71,56 @@ export function useGeolocation(): GeolocationState {
   useEffect(() => {
     setState({ status: "loading" });
 
+    // resolved flag prevents double-execution between getCurrentPosition callbacks
+    // and the hard JS timeout below.
+    let resolved = false;
+
+    const resolve = (next: GeolocationState) => {
+      if (resolved) return;
+      resolved = true;
+      setState(next);
+    };
+
+    const runIpFallback = async () => {
+      const loc = await ipGeolocation();
+      if (loc) {
+        resolve({ status: "success", ...loc, approximate: true });
+      } else {
+        resolve({ status: "error", message: "Não foi possível obter sua localização" });
+      }
+    };
+
+    // Hard timeout: fires after 10s regardless of what getCurrentPosition does.
+    // getCurrentPosition's own `timeout` option is unreliable — it does NOT apply to the
+    // permission-prompt wait time, so the callback can hang indefinitely on blocked/ignored prompts.
+    const hardTimer = setTimeout(runIpFallback, 10000);
+
     if (!navigator.geolocation) {
-      ipGeolocation().then((loc) => {
-        if (loc) setState({ status: "success", ...loc, approximate: true });
-        else setState({ status: "error", message: "Geolocalização não suportada neste navegador" });
-      });
+      clearTimeout(hardTimer);
+      runIpFallback();
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setState({
+        clearTimeout(hardTimer);
+        resolve({
           status: "success",
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
         });
       },
-      async () => {
-        // Browser geolocation unavailable — fallback to IP (ipapi.co → freeipapi.com)
-        const loc = await ipGeolocation();
-        if (loc) setState({ status: "success", ...loc, approximate: true });
-        else setState({ status: "error", message: "Não foi possível obter sua localização" });
+      () => {
+        clearTimeout(hardTimer);
+        runIpFallback();
       },
-      { timeout: 10000, maximumAge: 300000, enableHighAccuracy: false }
+      { timeout: 10000, maximumAge: 300000, enableHighAccuracy: false },
     );
+
+    return () => {
+      clearTimeout(hardTimer);
+      resolved = true; // prevent setState on unmounted component
+    };
   }, []);
 
   return state;
