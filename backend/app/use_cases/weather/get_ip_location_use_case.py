@@ -83,40 +83,11 @@ def _freeipapi(ip: Optional[str]) -> tuple[Optional[IpLocationResult], str]:
         return None, f"freeipapi.com erro: {type(e).__name__}: {e}"
 
 
-def _ipwhois(ip: Optional[str]) -> tuple[Optional[IpLocationResult], str]:
-    url = f"https://ipwho.is/{ip}" if ip else "https://ipwho.is/"
-    try:
-        with httpx.Client(timeout=8.0, follow_redirects=True) as client:
-            r = client.get(url)
-            if r.status_code != 200:
-                return None, f"ipwho.is HTTP {r.status_code}: {r.text[:200]}"
-            d = r.json()
-            if not d.get("success"):
-                return None, f"ipwho.is error: {d.get('message') or d}"
-            lat = d.get("latitude")
-            lon = d.get("longitude")
-            if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
-                return None, f"ipwho.is payload inválido: {d}"
-            return IpLocationResult(
-                latitude=float(lat),
-                longitude=float(lon),
-                city=str(d.get("city") or ""),
-                state=str(d.get("region") or ""),
-                source="ipwho.is",
-            ), ""
-    except httpx.TimeoutException:
-        return None, "ipwho.is timeout (8s)"
-    except httpx.RequestError as e:
-        return None, f"ipwho.is rede: {type(e).__name__}: {e}"
-    except Exception as e:
-        return None, f"ipwho.is erro: {type(e).__name__}: {e}"
-
-
 class GetIpLocationUseCase:
     """Resolves user location by IP from server side.
 
-    Bypasses browser CORS, mixed-content, and mobile-network filters by calling
-    IP geolocation APIs directly from the backend (httpx).
+    Bypasses browser CORS by calling IP geolocation APIs directly from the backend
+    (httpx). Used as last-resort fallback when the Next.js proxy chain also fails.
     """
 
     def execute(self, client_ip: Optional[str]) -> IpLocationResult:
@@ -124,7 +95,7 @@ class GetIpLocationUseCase:
         logger.info("[ip-locate] client_ip=%r usando_ip=%r", client_ip, ip)
 
         errors: list[str] = []
-        for name, fn in (("ipapi.co", _ipapi_co), ("freeipapi.com", _freeipapi), ("ipwho.is", _ipwhois)):
+        for name, fn in (("ipapi.co", _ipapi_co), ("freeipapi.com", _freeipapi)):
             result, err = fn(ip)
             if result is not None:
                 logger.info("[ip-locate] sucesso via %s: city=%r state=%r", name, result.city, result.state)
