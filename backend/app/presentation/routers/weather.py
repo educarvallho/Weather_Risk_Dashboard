@@ -1,14 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from app.domain.entities.user import User
 from app.domain.exceptions import NotFoundException
 from app.infrastructure.database.repositories.city_repository import CityRepository
 from app.infrastructure.external.open_meteo.client import OpenMeteoClient
 from app.presentation.dependencies import get_city_repository, get_weather_client, get_current_user, get_rules_repository
 from app.infrastructure.database.repositories.risk_rules_repository import RiskRulesRepository
-from app.presentation.schemas.weather_schemas import CityForecastResponse, LocationWeatherResponse, CurrentWeatherOut, DailyForecastOut, RiskOut
+from app.presentation.schemas.weather_schemas import CityForecastResponse, LocationWeatherResponse, IpLocationResponse, CurrentWeatherOut, DailyForecastOut, RiskOut
 from app.use_cases.weather.get_dashboard_data_use_case import GetDashboardDataUseCase
 from app.use_cases.weather.get_city_forecast_use_case import GetCityForecastUseCase
 from app.use_cases.weather.get_location_weather_use_case import GetLocationWeatherUseCase
+from app.use_cases.weather.get_ip_location_use_case import GetIpLocationUseCase
 
 router = APIRouter(prefix="/weather", tags=["weather"])
 
@@ -96,3 +97,24 @@ def get_location_weather(
         )
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Erro ao obter clima da localização: {str(e)}")
+
+
+@router.get("/ip-locate", response_model=IpLocationResponse)
+def get_ip_location(
+    request: Request,
+    _: User = Depends(get_current_user),
+):
+    forwarded = request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+    real_ip = request.headers.get("X-Real-IP", "").strip()
+    client_ip = forwarded or real_ip or (request.client.host if request.client else None)
+    try:
+        result = GetIpLocationUseCase().execute(client_ip)
+        return IpLocationResponse(
+            latitude=result.latitude,
+            longitude=result.longitude,
+            city=result.city or None,
+            state=result.state or None,
+            source="server",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Erro ao detectar localização por IP: {str(e)}")

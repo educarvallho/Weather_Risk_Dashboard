@@ -45,3 +45,11 @@ class LocationWeatherResponse(BaseModel):
     longitude: float
     nearest_city_name: Optional[str]
     current: CurrentWeatherOut
+
+
+class IpLocationResponse(BaseModel):
+    latitude: float
+    longitude: float
+    city: Optional[str] = None
+    state: Optional[str] = None
+    source: str
