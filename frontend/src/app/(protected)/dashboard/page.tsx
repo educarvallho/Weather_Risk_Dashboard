@@ -17,7 +17,7 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 type LocationState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "success"; data: LocationWeather; approximate?: boolean };
+  | { status: "success"; data: LocationWeather; approximate?: boolean; city?: string; state?: string };
 
 export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
@@ -50,7 +50,7 @@ export default function DashboardPage() {
     if (geo.status === "success") {
       setLocationState({ status: "loading" });
       api.get<LocationWeather>(`/weather/location?lat=${geo.latitude}&lon=${geo.longitude}`)
-        .then((data) => setLocationState({ status: "success", data, approximate: geo.approximate }))
+        .then((data) => setLocationState({ status: "success", data, approximate: geo.approximate, city: geo.city, state: geo.state }))
         .catch((e) => setLocationState({ status: "error", message: e.message }));
     } else if (geo.status === "error") {
       setLocationState({ status: "error", message: geo.message });

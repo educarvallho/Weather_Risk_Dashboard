@@ -5,7 +5,7 @@ import { RiskBadge } from "@/components/ui/RiskBadge";
 type Props =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "success"; data: LocationWeather; approximate?: boolean };
+  | { status: "success"; data: LocationWeather; approximate?: boolean; city?: string; state?: string };
 
 export function LocationWeatherCard(props: Props) {
   if (props.status === "loading") {
@@ -38,20 +38,24 @@ export function LocationWeatherCard(props: Props) {
     );
   }
 
-  const { data, approximate } = props;
+  const { data, approximate, city, state } = props;
+  const locationLabel = city ? (state ? `${city}, ${state}` : city) : null;
+
   return (
     <div className="bg-teal-50 rounded-xl border border-teal-200 p-5 shadow-sm">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <MapPin className="h-4 w-4 text-teal-600" />
-          <h3 className="font-semibold text-gray-900">Sua Localização</h3>
+          <h3 className="font-semibold text-gray-900">
+            {locationLabel ?? "Sua Localização"}
+          </h3>
         </div>
         <RiskBadge level={data.current.risk.level} size="md" />
       </div>
       {approximate && (
         <p className="text-xs text-amber-600 mb-2">Localização aproximada via IP</p>
       )}
-      {data.nearest_city_name && (
+      {data.nearest_city_name && data.nearest_city_name !== city && (
         <p className="text-xs text-teal-700 mb-2">Próximo a: <strong>{data.nearest_city_name}</strong></p>
       )}
       <div className="grid grid-cols-2 gap-3 text-sm">

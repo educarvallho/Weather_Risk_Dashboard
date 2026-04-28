@@ -5,27 +5,54 @@ import { useState, useEffect } from "react";
 type GeolocationState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "success"; latitude: number; longitude: number; approximate?: boolean }
+  | { status: "success"; latitude: number; longitude: number; approximate?: boolean; city?: string; state?: string }
   | { status: "error"; message: string };
 
-// Called from the browser — ipapi.co supports CORS, so the IP resolved is the client's IP,
-// not the server's. This works correctly even when the server is in a different country.
-async function ipGeolocation(): Promise<{ latitude: number; longitude: number } | null> {
+interface IPLocation {
+  latitude: number;
+  longitude: number;
+  city: string;
+  state: string;
+}
+
+async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 6000);
+  const timer = setTimeout(() => controller.abort(), ms);
   try {
-    const res = await fetch("https://ipapi.co/json/", { signal: controller.signal });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!data.error && typeof data.latitude === "number" && typeof data.longitude === "number") {
-      return { latitude: data.latitude, longitude: data.longitude };
-    }
-  } catch {
-    // timeout or network error
+    return await fetch(url, { signal: controller.signal });
   } finally {
     clearTimeout(timer);
   }
-  return null;
+}
+
+async function tryIpApi(): Promise<IPLocation | null> {
+  try {
+    const res = await fetchWithTimeout("https://ipapi.co/json/", 6000);
+    if (!res.ok) return null;
+    const d = await res.json();
+    if (d.error || typeof d.latitude !== "number" || typeof d.longitude !== "number") return null;
+    return { latitude: d.latitude, longitude: d.longitude, city: d.city || "", state: d.region_code || d.region || "" };
+  } catch {
+    return null;
+  }
+}
+
+async function tryFreeIpApi(): Promise<IPLocation | null> {
+  try {
+    const res = await fetchWithTimeout("https://freeipapi.com/api/json", 6000);
+    if (!res.ok) return null;
+    const d = await res.json();
+    if (typeof d.latitude !== "number" || typeof d.longitude !== "number") return null;
+    return { latitude: d.latitude, longitude: d.longitude, city: d.cityName || "", state: d.regionName || "" };
+  } catch {
+    return null;
+  }
+}
+
+async function ipGeolocation(): Promise<IPLocation | null> {
+  const primary = await tryIpApi();
+  if (primary) return primary;
+  return tryFreeIpApi();
 }
 
 export function useGeolocation(): GeolocationState {
@@ -51,13 +78,12 @@ export function useGeolocation(): GeolocationState {
         });
       },
       async () => {
-        // Browser geolocation unavailable (HTTP origin, permission denied, etc.)
-        // Fall back to IP-based geolocation run client-side — gives the device's public IP location
+        // Browser geolocation unavailable — fallback to IP (ipapi.co → freeipapi.com)
         const loc = await ipGeolocation();
         if (loc) setState({ status: "success", ...loc, approximate: true });
         else setState({ status: "error", message: "Não foi possível obter sua localização" });
       },
-      { timeout: 8000, maximumAge: 300000, enableHighAccuracy: false }
+      { timeout: 20000, maximumAge: 300000, enableHighAccuracy: false }
     );
   }, []);
 
