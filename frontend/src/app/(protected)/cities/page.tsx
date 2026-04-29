@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus, ToggleLeft, ToggleRight, Pencil, Trash2 } from "lucide-react";
 import { City } from "@/types";
 import { api } from "@/lib/api";
+import { invalidateDashboardCache } from "@/lib/dashboardCache";
 import { useAuth } from "@/hooks/useAuth";
 import { RiskBadge } from "@/components/ui/RiskBadge";
 import { Spinner } from "@/components/ui/Spinner";
@@ -40,6 +41,7 @@ export default function CitiesPage() {
   const handleToggle = async (id: number) => {
     try {
       await api.patch(`/cities/${id}/toggle`);
+      invalidateDashboardCache();
       load();
     } catch (e: any) {
       alert(e.message);
@@ -50,6 +52,7 @@ export default function CitiesPage() {
     if (!confirm(`Deseja excluir a cidade "${name}"?`)) return;
     try {
       await api.delete(`/cities/${id}`);
+      invalidateDashboardCache();
       load();
     } catch (e: any) {
       alert(e.message);
@@ -138,7 +141,7 @@ export default function CitiesPage() {
         <CityFormModal
           city={editCity}
           onClose={() => setShowModal(false)}
-          onSave={() => { setShowModal(false); load(); }}
+          onSave={() => { setShowModal(false); invalidateDashboardCache(); load(); }}
         />
       )}
     </div>

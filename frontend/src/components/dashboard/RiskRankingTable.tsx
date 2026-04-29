@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MapPin } from "lucide-react";
 import { CityRiskItem } from "@/types";
 import { RiskBadge } from "@/components/ui/RiskBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -24,10 +25,20 @@ export function RiskRankingTable({ items }: { items: CityRiskItem[] }) {
             <tr key={item.city_id} className="hover:bg-gray-50 transition-colors">
               <td className="py-3 pr-4 text-gray-400 font-mono">{i + 1}</td>
               <td className="py-3 pr-4">
-                <Link href={`/cities/${item.city_id}`} className="font-medium text-gray-900 hover:text-teal-600">
-                  {item.city_name}
-                </Link>
-                <span className="ml-1.5 text-gray-400">{item.state}</span>
+                {item.city_id === -1 ? (
+                  <span className="font-medium text-teal-700 flex items-center gap-1">
+                    <MapPin className="h-3 w-3 shrink-0" />
+                    {item.city_name}
+                    {item.state && <span className="ml-1 text-gray-400 font-normal">{item.state}</span>}
+                  </span>
+                ) : (
+                  <>
+                    <Link href={`/cities/${item.city_id}`} className="font-medium text-gray-900 hover:text-teal-600">
+                      {item.city_name}
+                    </Link>
+                    <span className="ml-1.5 text-gray-400">{item.state}</span>
+                  </>
+                )}
               </td>
               <td className="py-3 pr-4 text-right font-mono">{item.temperature}°C</td>
               <td className="py-3 pr-4 text-right font-mono">{item.rain_probability}%</td>

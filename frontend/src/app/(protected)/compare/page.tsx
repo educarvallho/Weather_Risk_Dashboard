@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Thermometer, Droplets, Wind } from "lucide-react";
-import { Dashboard, CityRiskItem } from "@/types";
+import { Thermometer, Droplets, Wind, MapPin } from "lucide-react";
+import { Dashboard } from "@/types";
 import { api } from "@/lib/api";
 import { RiskBadge } from "@/components/ui/RiskBadge";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
+import { readDashboardCache, writeDashboardCache } from "@/lib/dashboardCache";
+import { readLocationCache, augmentDashboardWithLocation } from "@/lib/locationWeatherCache";
 
 export default function ComparePage() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
@@ -16,13 +18,24 @@ export default function ComparePage() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
   useEffect(() => {
+    const cached = readDashboardCache();
+    if (cached) {
+      const loc = readLocationCache();
+      const data = loc ? augmentDashboardWithLocation(cached.data, loc) : cached.data;
+      setDashboard(data);
+      setSelected(new Set(data.risk_ranking.slice(0, 3).map((c) => c.city_id)));
+      setLoading(false);
+      return;
+    }
     api.get<Dashboard>("/weather/dashboard")
       .then((data) => {
-        setDashboard(data);
-        const defaultIds = data.risk_ranking.slice(0, 3).map((c) => c.city_id);
-        setSelected(new Set(defaultIds));
+        writeDashboardCache(data);
+        const loc = readLocationCache();
+        const augmented = loc ? augmentDashboardWithLocation(data, loc) : data;
+        setDashboard(augmented);
+        setSelected(new Set(augmented.risk_ranking.slice(0, 3).map((c) => c.city_id)));
       })
-      .catch((e) => setError(e.message))
+      .catch((e: unknown) => setError((e as Error).message))
       .finally(() => setLoading(false));
   }, []);
 
@@ -70,8 +83,9 @@ export default function ComparePage() {
                   : "bg-white text-gray-600 border-gray-300 hover:border-teal-400"
               }`}
             >
+              {city.city_id === -1 && <MapPin className="h-3 w-3" />}
               {city.city_name}
-              <span className="text-xs opacity-70">{city.state}</span>
+              {city.state && <span className="text-xs opacity-70">{city.state}</span>}
             </button>
           ))}
         </div>
@@ -101,8 +115,9 @@ export default function ComparePage() {
                 {selectedCities.map((city) => (
                   <tr key={city.city_id} className="hover:bg-gray-50 transition-colors">
                     <td className="py-3 font-medium text-gray-900">
+                      {city.city_id === -1 && <MapPin className="inline h-3 w-3 text-teal-600 mr-1" />}
                       {city.city_name}
-                      <span className="ml-1.5 text-gray-400 text-xs">{city.state}</span>
+                      {city.state && <span className="ml-1.5 text-gray-400 text-xs">{city.state}</span>}
                     </td>
                     <td className="py-3 text-right font-mono">{city.temperature}°C</td>
                     <td className="py-3 text-right font-mono">{city.rain_probability}%</td>

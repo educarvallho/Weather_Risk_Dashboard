@@ -13,16 +13,8 @@ import { LocationWeatherCard } from "@/components/dashboard/LocationWeatherCard"
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
 import { useGeolocation } from "@/hooks/useGeolocation";
-
-// Module-level cache persists across navigations within the same browser session.
-// Prevents unnecessary API calls and keeps last_updated stable when navigating away and back.
-const CACHE_TTL = 5 * 60 * 1000;
-let _cache: { data: Dashboard; fetchedAt: number } | null = null;
-
-function readCache(): { data: Dashboard; fetchedAt: number } | null {
-  if (_cache && Date.now() - _cache.fetchedAt < CACHE_TTL) return _cache;
-  return null;
-}
+import { readDashboardCache, writeDashboardCache, CACHE_TTL } from "@/lib/dashboardCache";
+import { readLocationCache, writeLocationCache, augmentDashboardWithLocation } from "@/lib/locationWeatherCache";
 
 type LocationState =
   | { status: "loading" }
@@ -30,16 +22,20 @@ type LocationState =
   | { status: "success"; data: LocationWeather; approximate?: boolean; city?: string; state?: string };
 
 export default function DashboardPage() {
-  const [dashboard, setDashboard] = useState<Dashboard | null>(() => readCache()?.data ?? null);
-  const [loading, setLoading] = useState(() => readCache() === null);
+  const [dashboard, setDashboard] = useState<Dashboard | null>(() => readDashboardCache()?.data ?? null);
+  const [loading, setLoading] = useState(() => readDashboardCache() === null);
   const [error, setError] = useState<string | null>(null);
-  const [fetchedAt, setFetchedAt] = useState<number | null>(() => readCache()?.fetchedAt ?? null);
-  const [locationState, setLocationState] = useState<LocationState>({ status: "loading" });
+  const [fetchedAt, setFetchedAt] = useState<number | null>(() => readDashboardCache()?.fetchedAt ?? null);
+  const [locationState, setLocationState] = useState<LocationState>(() => {
+    const cached = readLocationCache();
+    if (cached) return { status: "success", data: cached.data, approximate: cached.approximate, city: cached.city, state: cached.state };
+    return { status: "loading" };
+  });
   const geo = useGeolocation();
 
   const loadDashboard = useCallback(async (force = false) => {
     if (!force) {
-      const cached = readCache();
+      const cached = readDashboardCache();
       if (cached) {
         setDashboard(cached.data);
         setFetchedAt(cached.fetchedAt);
@@ -49,13 +45,12 @@ export default function DashboardPage() {
     }
     try {
       const data = await api.get<Dashboard>("/weather/dashboard");
-      const now = Date.now();
-      _cache = { data, fetchedAt: now };
+      const fetched = writeDashboardCache(data);
       setDashboard(data);
-      setFetchedAt(now);
+      setFetchedAt(fetched);
       setError(null);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -70,23 +65,37 @@ export default function DashboardPage() {
   }, [loadDashboard]);
 
   useEffect(() => {
-    if (geo.status === "success") {
-      // Destructure before async call so closure captures correct values
-      const { latitude, longitude, approximate, city, state } = geo;
-      setLocationState({ status: "loading" });
-      api.get<LocationWeather>(`/weather/location?lat=${latitude}&lon=${longitude}`)
-        .then((data) => setLocationState({ status: "success", data, approximate, city, state }))
-        .catch((e) => setLocationState({ status: "error", message: e.message, city, state }));
-    } else if (geo.status === "error") {
+    if (geo.status === "error") {
       setLocationState({ status: "error", message: geo.message });
+      return;
     }
+    if (geo.status !== "success") return;
+
+    // Use cached location weather if still fresh
+    const cached = readLocationCache();
+    if (cached) {
+      setLocationState({ status: "success", data: cached.data, approximate: cached.approximate, city: cached.city, state: cached.state });
+      return;
+    }
+
+    const { latitude, longitude, approximate, city, state } = geo;
+    setLocationState({ status: "loading" });
+    api.get<LocationWeather>(`/weather/location?lat=${latitude}&lon=${longitude}`)
+      .then((data) => {
+        writeLocationCache({ data, city, state, approximate });
+        setLocationState({ status: "success", data, approximate, city, state });
+      })
+      .catch((e: unknown) => setLocationState({ status: "error", message: (e as Error).message, city, state }));
   }, [geo.status]);
 
   if (loading) return <div className="flex justify-center pt-20"><Spinner size="lg" /></div>;
   if (error) return <div className="pt-8"><ErrorMessage message={error} /></div>;
   if (!dashboard) return null;
 
-  const { kpis, risk_ranking, alerts, temperature_comparison, rain_comparison } = dashboard;
+  // Augment dashboard with user's location city for display only (does not modify cache)
+  const locCache = readLocationCache();
+  const displayDashboard = locCache ? augmentDashboardWithLocation(dashboard, locCache) : dashboard;
+  const { kpis, risk_ranking, alerts, temperature_comparison, rain_comparison } = displayDashboard;
 
   const formattedUpdate = fetchedAt
     ? new Date(fetchedAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })

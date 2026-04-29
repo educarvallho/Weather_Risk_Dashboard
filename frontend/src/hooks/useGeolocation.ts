@@ -9,6 +9,8 @@ type GeolocationState =
   | { status: "success"; latitude: number; longitude: number; approximate?: boolean; city?: string; state?: string }
   | { status: "error"; message: string };
 
+type SuccessState = Extract<GeolocationState, { status: "success" }>;
+
 interface IPLocation {
   latitude: number;
   longitude: number;
@@ -17,6 +19,10 @@ interface IPLocation {
 }
 
 const log = (...args: unknown[]) => console.warn("[useGeolocation]", ...args);
+
+// Module-level cache: avoids re-fetching geolocation on every page navigation
+const GEO_CACHE_TTL = 5 * 60 * 1000;
+let _geoCache: { state: SuccessState; at: number } | null = null;
 
 async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
   const controller = new AbortController();
@@ -123,9 +129,15 @@ async function ipGeolocation(): Promise<IPLocation | null> {
 }
 
 export function useGeolocation(): GeolocationState {
-  const [state, setState] = useState<GeolocationState>({ status: "idle" });
+  const [state, setState] = useState<GeolocationState>(() => {
+    if (_geoCache && Date.now() - _geoCache.at < GEO_CACHE_TTL) return _geoCache.state;
+    return { status: "idle" };
+  });
 
   useEffect(() => {
+    // Cache hit — state already initialized from useState, nothing to do
+    if (_geoCache && Date.now() - _geoCache.at < GEO_CACHE_TTL) return;
+
     setState({ status: "loading" });
 
     let resolved = false;
@@ -133,6 +145,9 @@ export function useGeolocation(): GeolocationState {
     const resolve = (next: GeolocationState) => {
       if (resolved) return;
       resolved = true;
+      if (next.status === "success") {
+        _geoCache = { state: next, at: Date.now() };
+      }
       setState(next);
     };
 
