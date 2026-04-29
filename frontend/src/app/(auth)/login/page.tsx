@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { CloudRain, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,26 +14,31 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!isLoading && user) router.replace("/dashboard");
   }, [user, isLoading, router]);
 
-  useEffect(() => {
-    if (!error) return;
-    const t = setTimeout(() => setError(""), 5000);
-    return () => clearTimeout(t);
-  }, [error]);
+  const showError = (msg: string) => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    setError(msg);
+    errorTimerRef.current = setTimeout(() => setError(""), 5000);
+  };
+
+  const dismissError = () => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    setError("");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setSubmitting(true);
     try {
       await login(email, password);
       router.replace("/dashboard");
     } catch {
-      setError("Email ou senha inválidos");
+      showError("Email ou senha inválidos");
     } finally {
       setSubmitting(false);
     }
@@ -56,7 +61,9 @@ export default function LoginPage() {
           <h2 className="text-lg font-semibold text-gray-800">Entrar</h2>
 
           {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
+            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
           )}
 
           <div>
@@ -65,6 +72,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onFocus={dismissError}
               required
               className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
               placeholder="seu@email.com"
@@ -78,6 +86,7 @@ export default function LoginPage() {
                 type={showPass ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onFocus={dismissError}
                 required
                 className="w-full rounded-lg border border-gray-300 px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                 placeholder="••••••••"
