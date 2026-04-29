@@ -23,12 +23,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   if (res.status === 401) {
-    if (typeof window !== "undefined") {
+    const body = await res.json().catch(() => ({}));
+    if (path !== "/auth/login" && typeof window !== "undefined") {
       localStorage.removeItem("access_token");
       localStorage.removeItem("user");
       window.location.href = "/login";
     }
-    throw new Error("Sessão expirada. Faça login novamente.");
+    throw new Error(body.detail || "Sessão expirada. Faça login novamente.");
   }
 
   if (!res.ok) {
