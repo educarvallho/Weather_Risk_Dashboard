@@ -65,12 +65,12 @@ export default function ComparePage() {
   return (
     <div className="max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Comparação de Cidades</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Comparação de Cidades</h1>
         <p className="text-sm text-gray-500 mt-0.5">Selecione as cidades para comparar condições climáticas atuais</p>
       </div>
 
       {/* City selector */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
         <h2 className="font-semibold text-gray-900 mb-3">Cidades</h2>
         <div className="flex flex-wrap gap-2">
           {allCities.map((city) => (
@@ -98,9 +98,10 @@ export default function ComparePage() {
       {selectedCities.length > 0 && (
         <>
           {/* Comparison table */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm overflow-x-auto">
+          <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
             <h2 className="font-semibold text-gray-900 mb-4">Condições Atuais</h2>
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[560px]">
               <thead>
                 <tr className="border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wide">
                   <th className="pb-3 text-left">Cidade</th>
@@ -128,11 +129,12 @@ export default function ComparePage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
               <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <Thermometer className="h-4 w-4 text-teal-600" />
                 Temperatura (°C)
@@ -148,7 +150,7 @@ export default function ComparePage() {
               </ResponsiveContainer>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
               <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <Droplets className="h-4 w-4 text-blue-500" />
                 Probabilidade de Chuva (%)
@@ -164,7 +166,7 @@ export default function ComparePage() {
               </ResponsiveContainer>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm lg:col-span-2">
+            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm lg:col-span-2">
               <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <Wind className="h-4 w-4 text-gray-500" />
                 Velocidade do Vento (km/h)

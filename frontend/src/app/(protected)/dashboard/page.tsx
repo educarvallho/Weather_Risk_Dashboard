@@ -104,10 +104,14 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 max-w-7xl">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard Climático</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Dashboard Climático</h1>
         <p className="text-sm text-gray-500 mt-0.5">
           Visão geral das {kpis.active_cities} cidades monitoradas
-          {formattedUpdate && <span className="ml-2 text-gray-400">· Atualizado: {formattedUpdate}</span>}
+          {formattedUpdate && (
+            <span className="block sm:inline sm:ml-2 text-gray-400">
+              <span className="hidden sm:inline">· </span>Atualizado: {formattedUpdate}
+            </span>
+          )}
         </p>
       </div>
 
@@ -146,7 +150,7 @@ export default function DashboardPage() {
       {/* Geolocation + Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <LocationWeatherCard {...locationState} />
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
           <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-yellow-500" />
             Alertas Climáticos
@@ -156,21 +160,21 @@ export default function DashboardPage() {
       </div>
 
       {/* Risk Ranking */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
         <h2 className="font-semibold text-gray-900 mb-4">Ranking de Risco Operacional</h2>
         <RiskRankingTable items={risk_ranking} />
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
           <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <Thermometer className="h-4 w-4 text-teal-600" />
             Temperatura por Cidade
           </h2>
           <TemperatureChart data={temperature_comparison} />
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
           <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <Droplets className="h-4 w-4 text-blue-500" />
             Probabilidade de Chuva

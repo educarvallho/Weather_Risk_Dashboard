@@ -10,7 +10,7 @@ type Props =
 export function LocationWeatherCard(props: Props) {
   if (props.status === "loading") {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
           <MapPin className="h-4 w-4 text-teal-600" />
           <h3 className="font-semibold text-gray-900">Sua Localização</h3>
@@ -28,7 +28,7 @@ export function LocationWeatherCard(props: Props) {
       ? (props.state ? `${props.city}, ${props.state}` : props.city)
       : "Sua Localização";
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
           <MapPin className="h-4 w-4 text-teal-600" />
           <h3 className="font-semibold text-gray-900">{errorLabel}</h3>
@@ -48,11 +48,11 @@ export function LocationWeatherCard(props: Props) {
   const locationLabel = city ? (state ? `${city}, ${state}` : city) : null;
 
   return (
-    <div className="bg-teal-50 rounded-xl border border-teal-200 p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-teal-600" />
-          <h3 className="font-semibold text-gray-900">
+    <div className="bg-teal-50 rounded-xl border border-teal-200 p-4 sm:p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <MapPin className="h-4 w-4 text-teal-600 shrink-0" />
+          <h3 className="font-semibold text-gray-900 truncate">
             {locationLabel ?? "Sua Localização"}
           </h3>
         </div>

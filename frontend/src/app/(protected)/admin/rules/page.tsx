@@ -57,8 +57,8 @@ export default function AdminRulesPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <SlidersHorizontal className="h-6 w-6 text-teal-600" />
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <SlidersHorizontal className="h-5 w-5 sm:h-6 sm:w-6 text-teal-600" />
           Regras de Risco Operacional
         </h1>
         <p className="text-sm text-gray-500 mt-0.5">Calibre os limiares de pontuação. Apenas administradores têm acesso.</p>
@@ -120,7 +120,7 @@ export default function AdminRulesPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm space-y-4">
+    <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm space-y-4">
       <h2 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">{title}</h2>
       {children}
     </div>

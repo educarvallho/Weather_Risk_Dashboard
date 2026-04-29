@@ -9,7 +9,7 @@ export function RiskRankingTable({ items }: { items: CityRiskItem[] }) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm min-w-[560px]">
         <thead>
           <tr className="border-b border-gray-100 text-left text-xs text-gray-500 uppercase tracking-wide">
             <th className="pb-3 pr-4">#</th>

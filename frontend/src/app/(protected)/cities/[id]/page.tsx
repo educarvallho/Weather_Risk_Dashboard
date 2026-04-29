@@ -37,11 +37,11 @@ export default function CityDetailPage() {
       </button>
 
       {/* Header */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 shadow-sm">
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{data.city_name}</h1>
-            <p className="text-gray-500">{data.state} · Brasil</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{data.city_name}</h1>
+            <p className="text-gray-500 text-sm sm:text-base">{data.state} · Brasil</p>
           </div>
           <RiskBadge level={current.risk.level} size="md" />
         </div>

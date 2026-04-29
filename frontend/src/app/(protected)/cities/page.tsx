@@ -61,12 +61,12 @@ export default function CitiesPage() {
 
   return (
     <div className="max-w-5xl space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Cidades Monitoradas</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Cidades Monitoradas</h1>
           <p className="text-sm text-gray-500 mt-0.5">{cities.length} cidades {activeOnly ? "ativas" : "no total"}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
             <input type="checkbox" checked={activeOnly} onChange={(e) => setActiveOnly(e.target.checked)} className="rounded border-gray-300 text-teal-600" />
             Apenas ativas
@@ -84,8 +84,8 @@ export default function CitiesPage() {
       {loading ? (
         <div className="flex justify-center pt-10"><Spinner size="lg" /></div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Cidade</th>

@@ -54,15 +54,15 @@ export default function AdminUsersPage() {
 
   return (
     <div className="max-w-4xl space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <ShieldCheck className="h-6 w-6 text-purple-600" />
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
             Gerenciamento de Usuários
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">Apenas administradores têm acesso a esta área</p>
         </div>
-        <button onClick={() => { setEditUser(null); setShowModal(true); }} className="flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700">
+        <button onClick={() => { setEditUser(null); setShowModal(true); }} className="flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 self-start sm:self-auto">
           <Plus className="h-4 w-4" />
           Novo Usuário
         </button>
@@ -72,8 +72,8 @@ export default function AdminUsersPage() {
       {loading ? (
         <div className="flex justify-center pt-10"><Spinner size="lg" /></div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Nome</th>

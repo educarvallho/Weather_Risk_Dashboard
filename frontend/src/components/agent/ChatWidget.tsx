@@ -44,15 +44,18 @@ export function ChatWidget() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(!open)}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-teal-600 text-white shadow-lg hover:bg-teal-700 transition-colors"
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-teal-600 text-white shadow-lg hover:bg-teal-700 transition-colors"
         aria-label="Abrir agente climático"
       >
-        {open ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
+        {open ? <X className="h-5 w-5 sm:h-6 sm:w-6" /> : <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6" />}
       </button>
 
       {/* Chat window */}
       {open && (
-        <div className="fixed bottom-24 right-6 z-50 flex w-96 flex-col rounded-2xl bg-white shadow-2xl border border-gray-200 overflow-hidden" style={{ maxHeight: "70vh" }}>
+        <div
+          className="fixed z-50 flex flex-col rounded-2xl bg-white shadow-2xl border border-gray-200 overflow-hidden bottom-20 right-4 left-4 sm:bottom-24 sm:right-6 sm:left-auto sm:w-96"
+          style={{ maxHeight: "calc(100vh - 6rem)" }}
+        >
           {/* Header */}
           <div className="flex items-center gap-3 bg-teal-600 px-4 py-3 text-white">
             <Bot className="h-5 w-5" />
@@ -63,7 +66,7 @@ export function ChatWidget() {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ minHeight: 200, maxHeight: 400 }}>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ minHeight: 200 }}>
             {messages.map((m, i) => (
               <div key={i} className={`flex gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
                 <div className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-white ${m.role === "user" ? "bg-slate-500" : "bg-teal-600"}`}>
