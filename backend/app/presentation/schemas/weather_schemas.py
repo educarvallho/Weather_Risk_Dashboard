@@ -47,6 +47,14 @@ class LocationWeatherResponse(BaseModel):
     current: CurrentWeatherOut
 
 
+class LocationForecastResponse(BaseModel):
+    latitude: float
+    longitude: float
+    nearest_city_name: Optional[str]
+    current: CurrentWeatherOut
+    daily: list[DailyForecastOut]
+
+
 class IpLocationResponse(BaseModel):
     latitude: float
     longitude: float

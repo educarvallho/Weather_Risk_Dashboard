@@ -5,10 +5,11 @@ from app.infrastructure.database.repositories.city_repository import CityReposit
 from app.infrastructure.external.open_meteo.client import OpenMeteoClient
 from app.presentation.dependencies import get_city_repository, get_weather_client, get_current_user, get_rules_repository
 from app.infrastructure.database.repositories.risk_rules_repository import RiskRulesRepository
-from app.presentation.schemas.weather_schemas import CityForecastResponse, LocationWeatherResponse, IpLocationResponse, CurrentWeatherOut, DailyForecastOut, RiskOut
+from app.presentation.schemas.weather_schemas import CityForecastResponse, LocationWeatherResponse, LocationForecastResponse, IpLocationResponse, CurrentWeatherOut, DailyForecastOut, RiskOut
 from app.use_cases.weather.get_dashboard_data_use_case import GetDashboardDataUseCase
 from app.use_cases.weather.get_city_forecast_use_case import GetCityForecastUseCase
 from app.use_cases.weather.get_location_weather_use_case import GetLocationWeatherUseCase
+from app.use_cases.weather.get_location_forecast_use_case import GetLocationForecastUseCase
 from app.use_cases.weather.get_ip_location_use_case import GetIpLocationUseCase
 
 router = APIRouter(prefix="/weather", tags=["weather"])
@@ -77,6 +78,27 @@ def get_city_forecast(
         raise HTTPException(status_code=404, detail="Cidade não encontrada")
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Erro ao obter previsão: {str(e)}")
+
+
+@router.get("/location/forecast", response_model=LocationForecastResponse)
+def get_location_forecast(
+    lat: float = Query(..., ge=-90, le=90),
+    lon: float = Query(..., ge=-180, le=180),
+    city_repo: CityRepository = Depends(get_city_repository),
+    weather_client: OpenMeteoClient = Depends(get_weather_client),
+    _: User = Depends(get_current_user),
+):
+    try:
+        result = GetLocationForecastUseCase(city_repo, weather_client).execute(lat, lon)
+        return LocationForecastResponse(
+            latitude=result["latitude"],
+            longitude=result["longitude"],
+            nearest_city_name=result["nearest_city_name"],
+            current=_current_out(result["current"]),
+            daily=[_daily_out(d) for d in result["daily"]],
+        )
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Erro ao obter previsão da localização: {str(e)}")
 
 
 @router.get("/location", response_model=LocationWeatherResponse)

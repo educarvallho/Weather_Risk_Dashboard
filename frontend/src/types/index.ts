@@ -109,6 +109,14 @@ export interface Dashboard {
   last_updated: string;
 }
 
+export interface LocationForecast {
+  latitude: number;
+  longitude: number;
+  nearest_city_name: string | null;
+  current: CurrentWeather;
+  daily: DailyForecast[];
+}
+
 export interface RiskRules {
   rain_prob_high: number;
   rain_prob_medium: number;

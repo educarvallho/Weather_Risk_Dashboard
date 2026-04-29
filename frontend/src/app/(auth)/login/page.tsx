@@ -19,6 +19,12 @@ export default function LoginPage() {
     if (!isLoading && user) router.replace("/dashboard");
   }, [user, isLoading, router]);
 
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(""), 5000);
+    return () => clearTimeout(t);
+  }, [error]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -26,8 +32,8 @@ export default function LoginPage() {
     try {
       await login(email, password);
       router.replace("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Erro ao fazer login");
+    } catch {
+      setError("Email ou senha inválidos");
     } finally {
       setSubmitting(false);
     }

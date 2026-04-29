@@ -26,11 +26,11 @@ export function RiskRankingTable({ items }: { items: CityRiskItem[] }) {
               <td className="py-3 pr-4 text-gray-400 font-mono">{i + 1}</td>
               <td className="py-3 pr-4">
                 {item.city_id === -1 ? (
-                  <span className="font-medium text-teal-700 flex items-center gap-1">
+                  <Link href="/cities/location" className="font-medium text-teal-700 hover:text-teal-900 flex items-center gap-1">
                     <MapPin className="h-3 w-3 shrink-0" />
                     {item.city_name}
                     {item.state && <span className="ml-1 text-gray-400 font-normal">{item.state}</span>}
-                  </span>
+                  </Link>
                 ) : (
                   <>
                     <Link href={`/cities/${item.city_id}`} className="font-medium text-gray-900 hover:text-teal-600">

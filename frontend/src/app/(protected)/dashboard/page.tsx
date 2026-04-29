@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Thermometer, AlertTriangle, CheckCircle2, Droplets } from "lucide-react";
+import { Thermometer, AlertTriangle, CheckCircle2, Droplets, Building2, Wind } from "lucide-react";
 import { Dashboard, LocationWeather } from "@/types";
 import { api } from "@/lib/api";
 import { KPICard } from "@/components/dashboard/KPICard";
@@ -115,36 +115,109 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard
-          title="Temp. Média"
-          value={`${kpis.avg_temperature}°C`}
-          subtitle={`Máx: ${kpis.max_temperature}°C · Mín: ${kpis.min_temperature}°C`}
-          icon={<Thermometer className="h-5 w-5" />}
-          color="teal"
-        />
-        <KPICard
-          title="Cidade mais quente"
-          value={kpis.hottest_city?.name || "—"}
-          subtitle={kpis.hottest_city ? `${kpis.hottest_city.temp}°C` : undefined}
-          icon={<Thermometer className="h-5 w-5" />}
-          color="red"
-        />
-        <KPICard
-          title="Em risco alto"
-          value={kpis.high_risk_count}
-          subtitle={`de ${kpis.active_cities} cidades ativas`}
-          icon={<AlertTriangle className="h-5 w-5" />}
-          color={kpis.high_risk_count > 0 ? "red" : "teal"}
-        />
-        <KPICard
-          title="Melhor p/ operação"
-          value={kpis.best_operation_city?.name || "—"}
-          subtitle={kpis.best_operation_city ? `Score de risco: ${kpis.best_operation_city.risk_score}` : undefined}
-          icon={<CheckCircle2 className="h-5 w-5" />}
-          color="teal"
-        />
+      {/* KPIs — Visão Geral */}
+      <div>
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Visão Geral</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4">
+          <KPICard
+            title="Total de Cidades"
+            value={kpis.total_cities}
+            subtitle="cidades cadastradas"
+            icon={<Building2 className="h-5 w-5" />}
+            color="teal"
+          />
+          <KPICard
+            title="Cidades Ativas"
+            value={kpis.active_cities}
+            subtitle={`de ${kpis.total_cities} cadastradas`}
+            icon={<CheckCircle2 className="h-5 w-5" />}
+            color="teal"
+          />
+          <KPICard
+            title="Temp. Média"
+            value={`${kpis.avg_temperature}°C`}
+            subtitle="entre as cidades ativas"
+            icon={<Thermometer className="h-5 w-5" />}
+            color="teal"
+          />
+          <KPICard
+            title="Temp. Máxima"
+            value={`${kpis.max_temperature}°C`}
+            subtitle={kpis.hottest_city ? `em ${kpis.hottest_city.name}` : undefined}
+            icon={<Thermometer className="h-5 w-5" />}
+            color="red"
+          />
+          <KPICard
+            title="Temp. Mínima"
+            value={`${kpis.min_temperature}°C`}
+            subtitle={kpis.coldest_city ? `em ${kpis.coldest_city.name}` : undefined}
+            icon={<Thermometer className="h-5 w-5" />}
+            color="blue"
+          />
+          <KPICard
+            title="Prob. Média de Chuva"
+            value={`${kpis.avg_rain_probability}%`}
+            subtitle="entre as cidades ativas"
+            icon={<Droplets className="h-5 w-5" />}
+            color="blue"
+          />
+        </div>
+      </div>
+
+      {/* KPIs — Destaques por Cidade */}
+      <div>
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Destaques por Cidade</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          <KPICard
+            title="Em Risco Alto"
+            value={kpis.high_risk_count}
+            subtitle={`de ${kpis.active_cities} cidades ativas`}
+            icon={<AlertTriangle className="h-5 w-5" />}
+            color={kpis.high_risk_count > 0 ? "red" : "teal"}
+          />
+          <KPICard
+            title="Mais Quente"
+            value={kpis.hottest_city?.name || "—"}
+            subtitle={kpis.hottest_city ? `${kpis.hottest_city.temp}°C` : undefined}
+            icon={<Thermometer className="h-5 w-5" />}
+            color="red"
+          />
+          <KPICard
+            title="Mais Fria"
+            value={kpis.coldest_city?.name || "—"}
+            subtitle={kpis.coldest_city ? `${kpis.coldest_city.temp}°C` : undefined}
+            icon={<Thermometer className="h-5 w-5" />}
+            color="blue"
+          />
+          <KPICard
+            title="Maior Prob. de Chuva"
+            value={kpis.most_rain_prob_city?.name || "—"}
+            subtitle={kpis.most_rain_prob_city ? `${kpis.most_rain_prob_city.prob}%` : undefined}
+            icon={<Droplets className="h-5 w-5" />}
+            color="blue"
+          />
+          <KPICard
+            title="Maior Vol. de Chuva"
+            value={kpis.most_rain_volume_city?.name || "—"}
+            subtitle={kpis.most_rain_volume_city ? `${kpis.most_rain_volume_city.volume} mm` : undefined}
+            icon={<Droplets className="h-5 w-5" />}
+            color="blue"
+          />
+          <KPICard
+            title="Maior Velocidade de Vento"
+            value={kpis.windiest_city?.name || "—"}
+            subtitle={kpis.windiest_city ? `${kpis.windiest_city.wind} km/h` : undefined}
+            icon={<Wind className="h-5 w-5" />}
+            color="yellow"
+          />
+          <KPICard
+            title="Melhor p/ Operação"
+            value={kpis.best_operation_city?.name || "—"}
+            subtitle={kpis.best_operation_city ? `Score de risco: ${kpis.best_operation_city.risk_score}` : undefined}
+            icon={<CheckCircle2 className="h-5 w-5" />}
+            color="teal"
+          />
+        </div>
       </div>
 
       {/* Geolocation + Alerts */}
