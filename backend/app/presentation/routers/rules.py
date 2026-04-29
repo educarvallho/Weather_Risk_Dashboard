@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from app.domain.entities.risk_rules import RiskRules
 from app.domain.entities.user import User
 from app.infrastructure.database.repositories.risk_rules_repository import RiskRulesRepository
-from app.presentation.dependencies import get_rules_repository, get_current_user, require_admin
+from app.presentation.dependencies import get_rules_repository, require_admin
 from app.presentation.schemas.rules_schemas import RiskRulesOut, RiskRulesUpdateRequest
 from app.use_cases.rules.get_rules_use_case import GetRulesUseCase
 from app.use_cases.rules.update_rules_use_case import UpdateRulesUseCase
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 @router.get("", response_model=RiskRulesOut)
 def get_rules(
     rules_repo: RiskRulesRepository = Depends(get_rules_repository),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_admin),
 ):
     return GetRulesUseCase(rules_repo).execute()
 

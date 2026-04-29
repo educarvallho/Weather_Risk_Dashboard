@@ -12,8 +12,12 @@ cd Weather_Risk_Dashboard
 # 2. Configure as variáveis de ambiente
 cp .env.example .env
 # Edite o .env e preencha:
-# - SECRET_KEY (string aleatória segura)
 # - OPENAI_API_KEY (chave fornecida pelos avaliadores)
+# - SECRET_KEY — gere com o comando abaixo e cole o resultado no .env:
+#     python -c "import secrets; print(secrets.token_hex(32))"
+#   Exemplo de valor válido: a3f8c1d2e5b7094f6a2e1d8c3b5f7a9e2d4c6b8a0f1e3d5c7b9a2e4d6c8b0f2
+#   Essa chave assina todos os tokens JWT do sistema. Com um valor fraco
+#   qualquer pessoa poderia forjar credenciais de admin.
 
 # 3. Suba todos os serviços
 docker compose up --build

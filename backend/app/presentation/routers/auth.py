@@ -1,5 +1,7 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status
+import time
+from collections import defaultdict
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 logger = logging.getLogger(__name__)
 from app.domain.exceptions import InvalidCredentialsException, InactiveUserException
@@ -13,14 +15,39 @@ from app.domain.entities.user import User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+_login_attempts: dict[str, list[float]] = defaultdict(list)
+_RATE_WINDOW_SECONDS = 60
+_RATE_MAX_ATTEMPTS = 5
+
+
+def _get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+    real_ip = request.headers.get("X-Real-IP", "").strip()
+    return forwarded or real_ip or (request.client.host if request.client else "unknown")
+
+
+def _check_login_rate_limit(ip: str, email: str) -> None:
+    now = time.time()
+    _login_attempts[ip] = [t for t in _login_attempts[ip] if now - t < _RATE_WINDOW_SECONDS]
+    if len(_login_attempts[ip]) >= _RATE_MAX_ATTEMPTS:
+        logger.warning("login_rate_limited ip=%s email=%s", ip, email)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Muitas tentativas de login. Aguarde 1 minuto e tente novamente.",
+        )
+    _login_attempts[ip].append(now)
+
 
 @router.post("/login", response_model=LoginResponse)
 def login(
+    request: Request,
     body: LoginRequest,
     user_repo: UserRepository = Depends(get_user_repository),
     jwt_handler: JWTHandler = Depends(get_jwt_handler),
     password_hasher: PasswordHasher = Depends(get_password_hasher),
 ):
+    client_ip = _get_client_ip(request)
+    _check_login_rate_limit(client_ip, body.email)
     use_case = LoginUseCase(user_repo, jwt_handler, password_hasher)
     try:
         result = use_case.execute(body.email, body.password)
