@@ -151,18 +151,19 @@ Qual cidade está em risco alto?
 
 Após o login, o dashboard solicita a localização do dispositivo. O hook `useGeolocation` implementa três camadas de fallback:
 
-1. **`navigator.geolocation.getCurrentPosition`** — GPS/rede do dispositivo (10 s de timeout)
-2. **ipapi.co** — detecta cidade e coordenadas pelo IP do dispositivo via proxy Next.js
-3. **freeipapi.com** — alternativa se ipapi.co falhar (também via proxy)
-4. **`/weather/ip-locate`** — endpoint backend como último recurso (rede do servidor)
+1. **`navigator.geolocation.getCurrentPosition`** — GPS/rede do dispositivo (10 s de timeout); após sucesso, Nominatim (OpenStreetMap) faz reverse geocoding para obter nome da cidade e sigla do estado
+2. **ipapi.co** — chamada direta do browser, detecta cidade e coordenadas pelo IP real do cliente
+3. **freeipapi.com** — alternativa se ipapi.co falhar, também chamada diretamente do browser
 
-Um watchdog de **15 segundos** garante que, mesmo que o diálogo de permissão do browser seja ignorado (comum em HTTP/dispositivos sem GPS), o fallback de IP seja acionado. As APIs de IP são chamadas via rewrites do Next.js (`/geo-proxy/*`) para evitar problemas de CORS.
+As APIs de IP são chamadas **diretamente do browser** (não via proxy do servidor) para que detectem o IP real do cliente — ambas suportam CORS nativamente.
+
+Um watchdog de **25 segundos** garante que, mesmo que o diálogo de permissão seja ignorado ou o GPS demore em cold start mobile, o fallback de IP seja acionado.
 
 Quando o fallback de IP é usado, o card exibe o nome da cidade detectada e a mensagem **"Localização aproximada via IP"**. Em qualquer caso de falha, o sistema continua funcionando normalmente com as cidades cadastradas.
 
 | Estado | Comportamento |
 |--------|--------------|
-| GPS concedido | Coordenadas exatas, sem rótulo "aproximado" |
+| GPS concedido | Coordenadas exatas + nome da cidade via reverse geocoding |
 | IP fallback | Coordenadas + cidade + aviso de localização aproximada |
 | Todas as fontes falham | Mensagem de erro; dashboard opera sem card de localização |
 
