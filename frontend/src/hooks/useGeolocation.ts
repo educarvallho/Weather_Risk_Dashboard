@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { api } from "@/lib/api";
 
 type GeolocationState =
   | { status: "idle" }
@@ -34,12 +33,41 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
   }
 }
 
-// Chamadas via /geo-proxy/* — Next.js rewrite (next.config.js) faz o fetch externo
-// server-side. Browser vê mesma origem → zero CORS.
+const BR_STATE_ABBR: Record<string, string> = {
+  "Acre": "AC", "Alagoas": "AL", "Amapá": "AP", "Amazonas": "AM",
+  "Bahia": "BA", "Ceará": "CE", "Distrito Federal": "DF",
+  "Espírito Santo": "ES", "Goiás": "GO", "Maranhão": "MA",
+  "Mato Grosso": "MT", "Mato Grosso do Sul": "MS", "Minas Gerais": "MG",
+  "Pará": "PA", "Paraíba": "PB", "Paraná": "PR", "Pernambuco": "PE",
+  "Piauí": "PI", "Rio de Janeiro": "RJ", "Rio Grande do Norte": "RN",
+  "Rio Grande do Sul": "RS", "Rondônia": "RO", "Roraima": "RR",
+  "Santa Catarina": "SC", "São Paulo": "SP", "Sergipe": "SE", "Tocantins": "TO",
+};
+
+async function reverseGeocode(lat: number, lon: number): Promise<{ city: string; state: string } | null> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pt-BR`;
+    const res = await fetchWithTimeout(url, 5000);
+    if (!res.ok) return null;
+    const d = await res.json();
+    const addr = d?.address;
+    if (!addr) return null;
+    const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || "";
+    const rawState: string = addr.state || "";
+    const state = BR_STATE_ABBR[rawState] ?? (rawState ? rawState.slice(0, 2).toUpperCase() : "");
+    return city ? { city, state } : null;
+  } catch {
+    return null;
+  }
+}
+
+// Chamadas diretas ao browser: ipapi.co e freeipapi.com suportam CORS (Access-Control-Allow-Origin: *).
+// NÃO usar proxy Next.js — o proxy faria o fetch server-side e as APIs veriam o IP do servidor,
+// não o IP real do cliente.
 
 async function tryIpApiCo(): Promise<IPLocation | null> {
   try {
-    const res = await fetchWithTimeout("/geo-proxy/ipapi-co/json/", 8000);
+    const res = await fetchWithTimeout("https://ipapi.co/json/", 8000);
     if (!res.ok) {
       log("ipapi.co status", res.status);
       return null;
@@ -63,7 +91,7 @@ async function tryIpApiCo(): Promise<IPLocation | null> {
 
 async function tryFreeIpApi(): Promise<IPLocation | null> {
   try {
-    const res = await fetchWithTimeout("/geo-proxy/freeipapi/json", 8000);
+    const res = await fetchWithTimeout("https://freeipapi.com/api/json", 8000);
     if (!res.ok) {
       log("freeipapi.com status", res.status);
       return null;
@@ -85,29 +113,7 @@ async function tryFreeIpApi(): Promise<IPLocation | null> {
   }
 }
 
-async function tryServerSide(): Promise<IPLocation | null> {
-  try {
-    const d = await api.get<{ latitude: number; longitude: number; city: string | null; state: string | null }>(
-      "/weather/ip-locate",
-    );
-    if (typeof d.latitude !== "number" || typeof d.longitude !== "number") {
-      log("server-side payload inválido", d);
-      return null;
-    }
-    return {
-      latitude: d.latitude,
-      longitude: d.longitude,
-      city: d.city || "",
-      state: d.state || "",
-    };
-  } catch (e) {
-    log("server-side falhou", e);
-    return null;
-  }
-}
-
 async function ipGeolocation(): Promise<IPLocation | null> {
-  // Tenta as duas APIs em sequência (rápido — proxy local).
   const a = await tryIpApiCo();
   if (a) {
     log("ipapi.co OK", a);
@@ -117,13 +123,6 @@ async function ipGeolocation(): Promise<IPLocation | null> {
   if (b) {
     log("freeipapi.com OK", b);
     return b;
-  }
-  // Último recurso: backend tenta server-side (rede do container).
-  log("ambas APIs browser falharam, tentando backend /weather/ip-locate");
-  const c = await tryServerSide();
-  if (c) {
-    log("server-side OK", c);
-    return c;
   }
   return null;
 }
@@ -161,10 +160,9 @@ export function useGeolocation(): GeolocationState {
       }
     };
 
-    // Watchdog: 15s. native getCurrentPosition tem timeout próprio (10s) mas não cobre
-    // o tempo de espera do dialog de permissão; em HTTP/dispositivo sem GPS o callback
-    // pode nunca disparar. O watchdog garante o fallback IP.
-    const hardTimer = setTimeout(() => runIpFallback("watchdog 15s"), 15000);
+    // Watchdog: 25s cobre o dialog de permissão + cold start de GPS mobile.
+    // getCurrentPosition({ timeout: 10000 }) não conta o tempo do dialog.
+    const hardTimer = setTimeout(() => runIpFallback("watchdog 25s"), 25000);
 
     if (!navigator.geolocation) {
       clearTimeout(hardTimer);
@@ -174,13 +172,16 @@ export function useGeolocation(): GeolocationState {
 
     log("solicitando navigator.geolocation.getCurrentPosition");
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         clearTimeout(hardTimer);
         log("GPS OK", pos.coords);
+        const geo = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+        log("reverse geocode", geo);
         resolve({
           status: "success",
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
+          ...(geo ?? {}),
         });
       },
       (err) => {
