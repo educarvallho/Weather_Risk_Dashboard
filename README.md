@@ -76,14 +76,24 @@ app/
 
 ```
 src/
-├── app/              # Páginas (App Router)
-│   ├── (auth)/login  # Página de login
-│   └── (protected)/  # Layout autenticado + páginas internas
-├── components/       # Componentes reutilizáveis
-├── context/          # AuthContext (estado de autenticação)
-├── hooks/            # useGeolocation, useAuth
-├── lib/api.ts        # Cliente HTTP com interceptador JWT
-└── types/            # TypeScript interfaces
+├── app/                    # Páginas (App Router)
+│   ├── (auth)/login        # Página de login
+│   └── (protected)/        # Layout autenticado
+│       ├── dashboard/      # Dashboard principal com KPIs e ranking
+│       ├── compare/        # Comparação multi-cidade (gráficos)
+│       ├── cities/         # Listagem e gestão de cidades
+│       ├── cities/[id]/    # Detalhe + previsão de 7 dias
+│       ├── cities/location/# Previsão de 7 dias da localização do usuário
+│       ├── admin/users/    # Gestão de usuários (admin)
+│       └── admin/rules/    # Calibração de limiares de risco (admin)
+├── components/             # Componentes reutilizáveis
+├── context/                # AuthContext (token + user no localStorage)
+├── hooks/                  # useAuth, useGeolocation
+├── lib/
+│   ├── api.ts              # Cliente HTTP com interceptador JWT e retry
+│   ├── dashboardCache.ts   # Cache de módulo 5 min para dados do dashboard
+│   └── locationWeatherCache.ts  # Cache de módulo 5 min para clima da localização
+└── types/                  # TypeScript interfaces
 ```
 
 ## Princípios SOLID aplicados
@@ -139,15 +149,32 @@ Qual cidade está em risco alto?
 
 ## Localização atual do usuário
 
-Após o login, o dashboard solicita `navigator.geolocation.getCurrentPosition()`. O hook `useGeolocation` gerencia os estados:
+Após o login, o dashboard solicita a localização do dispositivo. O hook `useGeolocation` implementa três camadas de fallback:
 
-- **Carregando**: exibe spinner no card de localização
-- **Permissão concedida**: envia `GET /weather/location?lat=&lon=` ao backend, que consulta a Open-Meteo e retorna clima + risco
-- **Permissão negada / erro**: exibe mensagem clara, sistema continua funcionando normalmente
+1. **`navigator.geolocation.getCurrentPosition`** — GPS/rede do dispositivo (10 s de timeout)
+2. **ipapi.co** — detecta cidade e coordenadas pelo IP do dispositivo via proxy Next.js
+3. **freeipapi.com** — alternativa se ipapi.co falhar (também via proxy)
+4. **`/weather/ip-locate`** — endpoint backend como último recurso (rede do servidor)
+
+Um watchdog de **15 segundos** garante que, mesmo que o diálogo de permissão do browser seja ignorado (comum em HTTP/dispositivos sem GPS), o fallback de IP seja acionado. As APIs de IP são chamadas via rewrites do Next.js (`/geo-proxy/*`) para evitar problemas de CORS.
+
+Quando o fallback de IP é usado, o card exibe o nome da cidade detectada e a mensagem **"Localização aproximada via IP"**. Em qualquer caso de falha, o sistema continua funcionando normalmente com as cidades cadastradas.
+
+| Estado | Comportamento |
+|--------|--------------|
+| GPS concedido | Coordenadas exatas, sem rótulo "aproximado" |
+| IP fallback | Coordenadas + cidade + aviso de localização aproximada |
+| Todas as fontes falham | Mensagem de erro; dashboard opera sem card de localização |
 
 ## Cache de dados climáticos
 
-Para evitar sobrecarga na Open-Meteo, cada consulta é cacheada na tabela `weather_cache` por 15 minutos. O cache é por cidade (city_id + coordenadas), evitando chamadas redundantes quando múltiplos usuários acessam o dashboard simultaneamente.
+O sistema usa dois níveis de cache para minimizar chamadas externas:
+
+**Backend — banco de dados (15 minutos)**
+Cada consulta à Open-Meteo é gravada na tabela `weather_cache` com o timestamp real (`fetched_at`). Chamadas para a mesma cidade dentro de 15 minutos retornam o cache, evitando requisições redundantes quando múltiplos usuários acessam o dashboard simultaneamente.
+
+**Frontend — módulo em memória (5 minutos)**
+`dashboardCache.ts` e `locationWeatherCache.ts` mantêm os últimos dados em variáveis de módulo com TTL de 5 minutos. Ao navegar entre páginas e voltar ao dashboard, os dados em cache são usados sem nova chamada ao backend — o campo "Atualizado às" não muda. Um auto-refresh a cada 5 minutos força a renovação.
 
 ## Decisões técnicas
 
@@ -161,16 +188,76 @@ Para evitar sobrecarga na Open-Meteo, cada consulta é cacheada na tabela `weath
 
 ## Testes
 
+### Testes unitários (Ubuntu/Linux)
+
 ```bash
 cd backend
+
+# Crie e ative o ambiente virtual
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Instale as dependências
 pip install -r requirements.txt
+
+# Execute os testes (29 casos)
 pytest tests/unit/ -v
 ```
 
 Os testes cobrem:
-- **Cálculo de risco**: 16 casos de borda (limites exatos das thresholds)
-- **Autenticação**: credenciais válidas/inválidas, usuário inativo, JWT expirado
-- **Casos de uso de cidades**: filtros, toggle de status, controle de acesso por perfil
+- **Cálculo de risco** — 16 casos de borda (limites exatos das thresholds de chuva, vento e temperatura)
+- **Autenticação** — credenciais válidas/inválidas, usuário inativo, JWT expirado
+- **Casos de uso de cidades** — filtros, toggle de status, controle de acesso por perfil
+
+### Teste funcional da API (sistema rodando)
+
+```bash
+# Login e extração do token
+TOKEN=$(curl -s -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@weather.com","password":"admin123"}' \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# Dashboard com o token obtido
+curl -s -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/weather/dashboard \
+  | python3 -m json.tool | head -40
+```
+
+> `python3 -m json.tool` formata o JSON sem dependência adicional. Se preferir, substitua por `jq .` (requer instalação: `sudo apt install jq`).
+
+## Sistema de Logs
+
+O backend usa o módulo `logging` padrão do Python, configurado em `app/main.py`:
+
+```
+FORMAT: YYYY-MM-DDTHH:MM:SS  LEVEL  logger_name  mensagem
+EXEMPLO: 2026-04-29T14:32:01 WARNING app.presentation.routers.auth login_rate_limited ip=192.168.1.10 email=teste@email.com
+```
+
+Cada router tem seu próprio `logger = logging.getLogger(__name__)`, gerando logs com o caminho do módulo como nome — facilita rastrear a origem de cada evento.
+
+**Eventos registrados:**
+| Nível | Evento |
+|-------|--------|
+| `INFO` | Startup do FastAPI, inicializações |
+| `WARNING` | Rate limit atingido no login, erros de geolocalização por IP |
+| `ERROR` | Falhas na OpenAI, erros de acesso ao banco |
+
+**Visualizar logs em tempo real (Docker):**
+
+```bash
+# Backend
+docker compose logs backend -f --tail=100
+
+# Todos os serviços
+docker compose logs -f --tail=50
+
+# Filtrar apenas erros
+docker compose logs backend 2>&1 | grep -E "ERROR|WARNING"
+```
+
+> Os logs do Docker são voláteis: são perdidos ao rodar `docker compose down`. Para persistência, adicione um volume montando `/var/log` ou use um agregador como Loki/Grafana.
 
 ## Stack completa
 
