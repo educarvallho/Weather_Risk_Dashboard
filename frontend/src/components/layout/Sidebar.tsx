@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
@@ -78,17 +77,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       </nav>
 
       <div className="border-t border-slate-700 px-4 py-4">
-        <div className="mb-3 pb-3 border-b border-slate-700">
-          <p className="text-xs text-slate-500 mb-1.5">Desenvolvido por:</p>
-          <Image
-            src="/logo_nexoia.jpg"
-            alt="NexoIA"
-            width={100}
-            height={32}
-            className="rounded opacity-90"
-            style={{ objectFit: "contain" }}
-          />
-        </div>
         <div className="mb-3">
           <p className="text-sm font-medium truncate">{user?.full_name}</p>
           <p className="text-xs text-slate-400 truncate">{user?.email}</p>
